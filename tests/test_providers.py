@@ -1,4 +1,6 @@
+import io
 import json
+import urllib.error
 from pathlib import Path
 from typing import Any
 
@@ -17,11 +19,38 @@ class RecordingHub(ProviderHub):
         return {"message": {"content": "ok"}, "prompt_eval_count": 2, "eval_count": 1}
 
 
+class CompatibleHub(ProviderHub):
+    def __init__(self, project_root: Path, *, require_completion_key: bool = False) -> None:
+        super().__init__(project_root)
+        self.require_completion_key = require_completion_key
+        self.payloads: list[dict[str, Any]] = []
+
+    def _request(self, method: str, url: str, payload: Any, headers: dict[str, str]) -> dict[str, Any]:
+        assert method == "POST"
+        self.payloads.append(dict(payload))
+        if self.require_completion_key and len(self.payloads) == 1:
+            body = io.BytesIO(b'{"error":"use max_completion_tokens for this model"}')
+            raise urllib.error.HTTPError(url, 400, "Bad Request", {}, body)
+        return {
+            "choices": [{"message": {"content": "compatible-ok"}}],
+            "usage": {"prompt_tokens": 3, "completion_tokens": 1},
+        }
+
+
 def _config(root: Path) -> None:
     store = root / ".clawreinforce"
     store.mkdir()
     (store / "providers.json").write_text(
         json.dumps({"ollama": {"enabled": False}, "ollama-cloud": {"api_key": "test-key"}}), encoding="utf-8"
+    )
+
+
+def _compatible_config(root: Path) -> None:
+    store = root / ".clawreinforce"
+    store.mkdir()
+    (store / "providers.json").write_text(
+        json.dumps({"deepseek": {"base_url": "https://compatible.invalid/v1", "api_key": "test-key"}}),
+        encoding="utf-8",
     )
 
 
@@ -44,3 +73,23 @@ def test_ollama_cloud_chat_uses_cloud_endpoint(tmp_path: Path) -> None:
     assert hub.request is not None
     assert hub.request[1] == "https://ollama.com/api/chat"
 
+
+def test_compatible_provider_sends_max_tokens_first(tmp_path: Path) -> None:
+    _compatible_config(tmp_path)
+    hub = CompatibleHub(tmp_path)
+    result = hub.execute("deepseek:model-a", "system", "user")
+    assert result.output == "compatible-ok"
+    assert len(hub.payloads) == 1
+    assert hub.payloads[0]["max_tokens"] == 4096
+    assert "max_completion_tokens" not in hub.payloads[0]
+
+
+def test_compatible_provider_retries_once_with_completion_key(tmp_path: Path) -> None:
+    _compatible_config(tmp_path)
+    hub = CompatibleHub(tmp_path, require_completion_key=True)
+    result = hub.execute("deepseek:model-a", "system", "user")
+    assert result.output == "compatible-ok"
+    assert len(hub.payloads) == 2
+    assert "max_tokens" in hub.payloads[0]
+    assert "max_tokens" not in hub.payloads[1]
+    assert hub.payloads[1]["max_completion_tokens"] == 4096

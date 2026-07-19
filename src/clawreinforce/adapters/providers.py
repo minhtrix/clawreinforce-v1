@@ -151,8 +151,22 @@ class ProviderHub:
         return ProviderResult("completed", output=data["message"]["content"], input_tokens=data.get("prompt_eval_count"), output_tokens=data.get("eval_count"))
 
     def _compatible(self, model: str, system: str, user: str, settings: dict[str, Any]) -> ProviderResult:
-        payload = {"model": model, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}], "max_completion_tokens": 4096}
-        data = self._request("POST", settings["base_url"].rstrip("/") + "/chat/completions", payload, self._headers("compatible", settings))
+        payload = {
+            "model": model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "max_tokens": 4096,
+        }
+        url = settings["base_url"].rstrip("/") + "/chat/completions"
+        headers = self._headers("compatible", settings)
+        try:
+            data = self._request("POST", url, payload, headers)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if exc.code != 400 or "max_completion_tokens" not in body.lower():
+                raise
+            retry_payload = {**payload, "max_completion_tokens": payload["max_tokens"]}
+            del retry_payload["max_tokens"]
+            data = self._request("POST", url, retry_payload, headers)
         usage = data.get("usage", {})
         return ProviderResult("completed", output=data["choices"][0]["message"]["content"], input_tokens=usage.get("prompt_tokens"), output_tokens=usage.get("completion_tokens"))
 
