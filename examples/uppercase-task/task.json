@@ -1,0 +1,7 @@
+{
+  "name": "uppercase-text",
+  "prompt": "hello",
+  "check": {"kind": "equals", "value": "HELLO"},
+  "oracle": "HELLO"
+}
+

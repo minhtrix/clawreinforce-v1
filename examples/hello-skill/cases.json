@@ -1,0 +1,13 @@
+[
+  {
+    "id": "echo-hello",
+    "input": "hello",
+    "check": {"kind": "equals", "value": "hello"}
+  },
+  {
+    "id": "echo-build-week",
+    "input": "Build Week",
+    "check": {"kind": "equals", "value": "Build Week"}
+  }
+]
+

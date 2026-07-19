@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clawreinforce"
+version = "0.1.0"
+description = "CI for agent skills: verify before install."
+requires-python = ">=3.11"
+dependencies = ["cryptography>=44", "Pillow>=11"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-cov>=6"]
+
+[project.scripts]
+clawreinforce = "clawreinforce.adapters.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

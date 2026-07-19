@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Verify agent skills before an agent runs them.">
+  <title>clawreinforce — CI for agent skills</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#verify" aria-label="clawreinforce home">
+      <span class="brand-mark" aria-hidden="true">CR</span>
+      <span><strong>clawreinforce</strong><small>No agent should run a skill nobody verified.</small></span>
+    </a>
+    <div class="live"><span></span> local trust plane</div>
+  </header>
+
+  <nav class="tabs" aria-label="Product areas">
+    <button class="tab active" data-tab="verify" aria-selected="true">Verify <small>scan · certify · guard</small></button>
+    <button class="tab" data-tab="improve" aria-selected="false">Improve <small>golden loop</small></button>
+    <button class="tab" data-tab="arena" aria-selected="false">Arena <small>bench · uplift</small></button>
+    <button class="tab" data-tab="models" aria-selected="false">Models <small>provider hub</small></button>
+  </nav>
+
+  <main>
+    <section class="view active" id="verify" aria-labelledby="verify-title">
+      <div class="hero-copy">
+        <p class="eyebrow">VERIFY BEFORE INSTALL</p>
+        <h1 id="verify-title">Turn an unknown skill into a deterministic decision.</h1>
+        <p>Fetch once. Inspect the bytes. Run declared cases. Keep missing coverage honest.</p>
+      </div>
+      <div class="workbench">
+        <div class="form-stack">
+          <label for="verify-source">ClawHub or GitHub skill URL</label>
+          <input id="verify-source" value="https://clawhub.ai/jaaneek/skills/x-search" autocomplete="off">
+          <label for="verify-tier">Certification tier</label>
+          <input id="verify-tier" value="ollama-cloud:" autocomplete="off">
+          <div class="actions">
+            <button class="secondary" id="scan-button">Static scan</button>
+            <button class="primary" id="guard-button">Run guard</button>
+          </div>
+        </div>
+        <div class="result-shell" aria-live="polite">
+          <div class="result-heading"><span>Decision record</span><span class="status neutral" id="verify-status">READY</span></div>
+          <pre id="verify-output">Waiting for a skill.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="improve" aria-labelledby="improve-title" hidden>
+      <div class="hero-copy compact">
+        <p class="eyebrow">DETERMINISTIC REWRITE GATE</p>
+        <h1 id="improve-title">The model proposes. The regression suite decides.</h1>
+        <p>Test a candidate outcome map: the target must turn green and every previous pass must stay green.</p>
+      </div>
+      <div class="split">
+        <div class="panel form-stack">
+          <label for="target-case">Failing target case</label>
+          <input id="target-case" value="target">
+          <label for="before-map">Before</label>
+          <textarea id="before-map" rows="7">{"old": true, "target": false}</textarea>
+          <label for="after-map">After</label>
+          <textarea id="after-map" rows="7">{"old": true, "target": true}</textarea>
+          <button class="primary" id="rewrite-gate-button">Evaluate rewrite gate</button>
+        </div>
+        <div class="gate-visual" aria-live="polite">
+          <div class="loop-node">FAILING CASE</div><div class="loop-arrow">→</div>
+          <div class="loop-node model">LLM PROPOSAL</div><div class="loop-arrow">→</div>
+          <div class="loop-node judge">CODE JUDGE</div>
+          <div class="gate-result" id="gate-result">No candidate evaluated.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="arena" aria-labelledby="arena-title" hidden>
+      <div class="hero-copy compact">
+        <p class="eyebrow">UPLIFT, NOT VIBES</p>
+        <h1 id="arena-title">Same task. Same model. Skill off, then on.</h1>
+      </div>
+      <div class="arena-controls">
+        <label>Difficulty<select id="arena-task-preset">
+          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/court-form-filling">Easy · court-form-filling</option>
+          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/edit-pdf">Medium · edit-pdf</option>
+          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/3d-scan-calc">Hard · 3d-scan-calc</option>
+        </select></label>
+        <label>SkillsBench task URL<input id="arena-task" value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/court-form-filling"></label>
+        <label>ClawHub skill URL<input id="arena-skill" value="https://clawhub.ai/jaaneek/skills/x-search"></label>
+        <label>Ollama Cloud model<input id="arena-tier" value="ollama-cloud:"></label>
+        <label>Trials<input id="arena-trials" type="number" min="1" max="20" value="2"></label>
+        <button class="primary" id="bench-button">Start benchmark</button>
+        <button class="secondary" id="cancel-button" disabled>Cancel</button>
+      </div>
+      <div class="metrics">
+        <article><small>WITHOUT SKILL</small><strong id="metric-without">—</strong></article>
+        <article><small>WITH SKILL</small><strong id="metric-with">—</strong></article>
+        <article class="accent"><small>UPLIFT</small><strong id="metric-uplift">—</strong></article>
+        <article><small>COVERAGE</small><strong id="metric-coverage">0 / 0</strong></article>
+      </div>
+      <div class="grid-shell">
+        <div class="result-heading"><span>Live results grid</span><span class="status neutral" id="arena-status">IDLE</span></div>
+        <table>
+          <thead><tr><th>Tier</th><th>Trial</th><th>Without</th><th>With skill</th><th>Uplift</th><th>Status</th></tr></thead>
+          <tbody id="arena-rows"><tr><td colspan="6" class="empty">Results stream here as each model finishes.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="view" id="models" aria-labelledby="models-title" hidden>
+      <div class="hero-copy compact">
+        <p class="eyebrow">PROVIDER HUB</p>
+        <h1 id="models-title">One readable registry, even at 100+ models.</h1>
+      </div>
+      <div class="model-toolbar">
+        <input id="model-filter" type="search" placeholder="Filter providers or models">
+        <button class="secondary" id="refresh-models">Refresh cloud models</button>
+      </div>
+      <div class="model-picker">
+        <label for="model-select">Available Ollama Cloud models</label>
+        <select id="model-select"><option>Loading cloud models…</option></select>
+        <button class="secondary" id="use-verify-model">Use in Verify</button>
+        <button class="secondary" id="use-arena-model">Use in Arena</button>
+      </div>
+      <div class="provider-grid" id="provider-grid" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer><span>CORE → CLI + HTTP → WEB</span><span>signed, fingerprint-bound, coverage-aware</span></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
