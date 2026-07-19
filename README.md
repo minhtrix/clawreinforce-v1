@@ -1,112 +1,76 @@
 # clawreinforce
 
-> CI for agent skills: fetch, inspect, certify, compare, and decide before an agent installs a skill.
+> No agent should run a skill nobody verified.
 
-This is the fresh OpenAI Build Week rebuild. The product keeps deterministic checks in a pure Python core, exposes the same contract through CLI and HTTP, and uses a four-area web UI for Verify, Improve, Arena, and Models.
+clawreinforce is CI for agent skills. It fetches untrusted skill bundles, scans their instructions, certifies declared behavior with deterministic checks, compares model performance with and without a skill, and emits fingerprint-bound trust evidence instead of asking an LLM to judge another LLM.
 
-## Start the hackathon demo
+## 60-second quickstart — zero API keys
 
-Windows PowerShell:
+The built-in fixture provider is deterministic and requires no account, network access, or secret:
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-.\.venv\Scripts\clawreinforce.exe serve --project . --port 8788
+```console
+$ python -m pip install -e .
+$ clawreinforce certify examples/hello-skill --tier fixture:echo
+$ clawreinforce guard examples/hello-skill --tier fixture:echo
+$ clawreinforce bench examples/uppercase-task examples/uppercase-skill --tier fixture:upper-if-skilled --trials 2
 ```
 
-Open [http://127.0.0.1:8788](http://127.0.0.1:8788).
-
-The Models tab discovers the enabled provider's current model catalog automatically. The API key stays on the server and is never returned to the browser.
-
-## Ollama Cloud
-
-The preferred setup is an environment variable:
-
-```powershell
-$env:OLLAMA_API_KEY = "your-key"
-.\.venv\Scripts\clawreinforce.exe models --project . --discover ollama-cloud
-```
-
-For a project-local setup, create `.clawreinforce/providers.json`:
-
-```json
-{
-  "openai": { "enabled": false },
-  "anthropic": { "enabled": false },
-  "ollama": { "enabled": false },
-  "ollama-cloud": {
-    "enabled": true,
-    "api_key": "your-key"
-  }
-}
-```
-
-`.clawreinforce/` is ignored by Git. Test discovery and one minimal request:
-
-```powershell
-.\.venv\Scripts\clawreinforce.exe models --project . --discover ollama-cloud
-.\.venv\Scripts\clawreinforce.exe models --project . --probe ollama-cloud:gpt-oss:20b
-```
-
-## Link-first workflow
-
-ClawHub page URLs work directly:
-
-```powershell
-.\.venv\Scripts\clawreinforce.exe guard "https://clawhub.ai/jaaneek/skills/x-search" --tier ollama-cloud:gpt-oss:20b
-```
-
-SkillsBench accepts both the public website and GitHub task folder:
-
-```powershell
-.\.venv\Scripts\clawreinforce.exe task-check "https://www.skillsbench.ai/tasks/3d-scan-calc"
-.\.venv\Scripts\clawreinforce.exe task-check "https://github.com/benchflow-ai/skillsbench/tree/main/tasks/edit-pdf"
-```
-
-The UI includes the requested presets:
-
-- Easy: `court-form-filling`
-- Medium: `edit-pdf`
-- Hard: `3d-scan-calc`
-
-Website links are convenient for people. GitHub tree links are better for imports, and a GitHub URL pinned to a commit SHA is best for reproducible benchmark evidence. Website task links are normalized to the official SkillsBench GitHub folder automatically.
-
-## Honest benchmark boundary
-
-Native `task.json` tasks use clawreinforce's deterministic checks and produce scores. SkillsBench tasks import their prompt, metadata, files, and difficulty, but their official container verifier is not executed by this lightweight runner. Those rows are marked `ungraded`; clawreinforce never converts missing verifier coverage into a zero or a fabricated score.
-
-Many SkillsBench tasks also require files, GUI actions, or a sandboxed agent runtime. A plain cloud chat completion proves provider connectivity, not full task completion. Integrating the official SkillsBench execution environment is the next production milestone.
-
-The `agent` check kind is **single-shot (no tool loop yet)**. It grades one emitted artifact map with the same hidden-grader path as `task`; it does not run an iterative agent or tool-calling loop.
-
-## Useful commands
-
-```powershell
-# Local deterministic fixtures
-.\.venv\Scripts\clawreinforce.exe scan examples\hello-skill
-.\.venv\Scripts\clawreinforce.exe certify examples\hello-skill --tier fixture:echo
-.\.venv\Scripts\clawreinforce.exe bench examples\uppercase-task examples\uppercase-skill --tier fixture:upper-if-skilled --trials 2
-
-# Test suite
-.\.venv\Scripts\python.exe -m pytest -q
-```
-
-## Architecture
+Expected signals in the JSON output:
 
 ```text
-src/clawreinforce/core/       pure verification, fetching, grading, certificates
-src/clawreinforce/adapters/   CLI, provider clients, HTTP, SSE run broker
-web/                          HTTP-only browser client
-tests/                        deterministic unit and integration tests
-examples/                     small test fixtures, not installed user skills
+certify  -> status: completed, pass_rate: 1.0, signed certificate_path
+guard    -> verdict: install
+bench    -> without_skill: 0.0, with_skill: 1.0, uplift: 1.0, coverage: 2/2
 ```
 
-Security properties include ZIP path validation, temporary remote-source staging, subprocess time/output limits, append-only JSONL ledgers, content fingerprints, and Ed25519-signed certificates. Provider failures stay structured and coverage-aware.
+Run the tests with `python -m pip install -e ".[dev]"` followed by `python -m pytest`.
 
-## Three-minute demo
+## GUI
 
-1. Open Models and show the live Ollama Cloud catalog.
-2. Select a model and send it to Verify or Arena.
-3. Paste the ClawHub X Search URL and run Guard.
-4. Switch Arena between Easy, Medium, and Hard SkillsBench links.
-5. Show that external verifier coverage is `ungraded`, then run the local uppercase fixture to demonstrate measurable `+1.00` uplift and SSE progress.
+```console
+$ clawreinforce serve --project . --host 127.0.0.1 --port 8788
+```
+
+Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Long Arena runs stream rows and progress over Server-Sent Events.
+
+## How Codex was used
+
+This repository was built in milestone-focused Codex sessions from the recovered master specification in [docs/SPEC.md](docs/SPEC.md). Codex translated that spec into the core/adapter/web architecture, implemented the CLI and HTTP surfaces, wrote the deterministic fixtures and regression tests, integrated remote skill and task sources, and kept each behavior change behind a green test increment and an evidence-bearing Git commit.
+
+## How GPT-5.6 is used
+
+GPT-5.6 has two roles. First, Codex with GPT-5.6 built the repository from `docs/SPEC.md`. Second, GPT-5.6 runs inside the product: `openai:gpt-5.6-sol` is the default certification tier and can also be selected as the Arena executor for same-model comparisons with and without a skill. The deterministic check, not GPT-5.6, decides whether an output passes.
+
+## Positioning vs ClawBench
+
+ClawBench (github.com/openclaw/shellbench) benchmarks **models** as OpenClaw agents on a
+fixed curated task suite (completion/trajectory/behavior/reliability, pass^k, deterministic
+verification, advisory-only LLM judge). We share its verification philosophy — verify the
+work, never trust the transcript, deterministic official scores — and cite it respectfully.
+The difference is the unit: **ClawBench ranks models; this tool certifies and improves
+SKILLS.** It measures a skill's uplift (same model WITH vs WITHOUT the skill), gates
+self-rewrites, and issues fingerprint-bound signed certificates — and it changes the
+artifact, not just scores it. One sentence for the README: "ClawBench tells you which model to run. clawreinforce tells you which skills to trust — and makes them better. Agents need both."
+
+## Architecture and invariants
+
+1. `core/` owns pure domain logic and imports no HTTP or web code.
+2. CLI and HTTP adapters map the same core functions; the web client uses HTTP only.
+3. Skill fingerprints bind certificates and reports to the exact inspected bytes.
+4. Deterministic checks are the only scoring authority; there is no LLM-as-judge score.
+5. Executable checks run in temporary subprocesses with time and output limits.
+6. Provider failures remain unavailable coverage and are never converted into zero scores.
+7. JSONL ledgers are append-only sources of truth; GUI reports are projections.
+8. `agent` checks are single-shot task-artifact grading, with no iterative tool loop yet.
+9. Provider secrets come from environment variables first or ignored local configuration.
+10. Files stay focused and near 300 lines; tests ship in the same commit as behavior.
+
+## Sources, providers, and current boundary
+
+Verify accepts local skill paths, GitHub tree URLs, ClawHub slugs, and canonical ClawHub page URLs. Arena accepts local tasks, GitHub task folders, and `skillsbench.ai/tasks/<slug>` links. SkillsBench prompts and metadata import cleanly, but their official container verifier is not part of this lightweight runner, so those rows are honestly marked `ungraded`.
+
+Provider keys can be set through environment variables or ignored `.clawreinforce/providers.json`. The provider hub supports OpenAI, Anthropic, Ollama, Ollama Cloud, and configurable OpenAI-compatible endpoints. Use `clawreinforce models --project . --discover <provider>` to inspect a provider's current catalog without exposing its key.
+
+## Predecessor
+
+The Build Week specification was distilled from a two-month predecessor project. Its measured instruct-vs-fewshot A/B result informs the Improve gates: few-shot examples are most effective when the same model mines and executes them, while instruct-style rules transfer more reliably across executor models.
