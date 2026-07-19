@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from clawreinforce.adapters.providers import ProviderHub
+from clawreinforce.adapters.provider_probe import local_status, probe_model
 from clawreinforce.adapters.run_broker import RunBroker
 from clawreinforce.adapters.http_arena import BenchManager, task_catalog
 from clawreinforce.adapters.http_improve import improve_source
@@ -33,6 +34,7 @@ class AppState:
         self.runs = RunBroker()
         self.bench = BenchManager(self.project_root, self.providers, self.runs)
         self._model_cache: tuple[float, dict[str, Any]] | None = None
+        self._provider_errors: dict[str, dict[str, Any] | None] = {}
 
     def model_catalog(self, refresh: bool = False) -> dict[str, Any]:
         if self._model_cache and not refresh and time.monotonic() - self._model_cache[0] < 300:
@@ -40,13 +42,14 @@ class AppState:
         providers = self.providers.status()
         models: list[dict[str, str]] = []
         for row in providers:
-            row["models"] = []
+            row["models"] = list(row.get("models") or [])
+            row["last_error"] = self._provider_errors.get(row["provider"])
             if row["provider"] == "fixture":
                 row["models"] = ["echo", "upper-if-skilled"]
-                models.extend(
-                    {"provider": "fixture", "model": model, "tier": f"fixture:{model}"}
-                    for model in row["models"]
-                )
+            models.extend(
+                {"provider": row["provider"], "model": model, "tier": f"{row['provider']}:{model}"}
+                for model in row["models"]
+            )
         preset = next(
             (model["tier"] for model in models if model["tier"] == "openai:gpt-5.6-sol"),
             next((model["tier"] for model in models if model["provider"] == "ollama-cloud"), "fixture:echo"),
@@ -62,6 +65,9 @@ class AppState:
             raise ClawError("provider.unknown", "validation", f"unknown provider: {provider}", provider=provider)
         result = self.providers.discover(provider)
         discovered = json.loads(result.output) if result.status == "completed" and result.output else []
+        self._provider_errors[provider] = result.error
+        if result.status == "completed" and provider != "fixture":
+            self.providers.remember_models(provider, discovered)
         row["models"] = discovered
         row["last_error"] = result.error
         catalog["models"] = [item for item in catalog["models"] if item["provider"] != provider]
@@ -70,6 +76,22 @@ class AppState:
             for model in discovered
         )
         return {"discovery": {"provider": provider, "status": result.status, "error": result.error}, **catalog}
+
+    def test_model(self, tier: str) -> dict[str, Any]:
+        result = probe_model(self.providers, tier)
+        provider = tier.partition(":")[0]
+        if provider:
+            self._provider_errors[provider] = result.get("error")
+            if self._model_cache:
+                row = next((item for item in self._model_cache[1]["providers"] if item["provider"] == provider), None)
+                if row is not None:
+                    row["last_error"] = result.get("error")
+        return result
+
+    def add_model(self, provider: str, model: str) -> dict[str, Any]:
+        self.providers.add_model(provider, model)
+        self._model_cache = None
+        return self.model_catalog(refresh=True)
 
 def _error(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, ClawError):
@@ -119,6 +141,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     self._json(improve_status())
                 elif path == "/api/models":
                     self._json(app.model_catalog("refresh=1" in parsed.query))
+                elif path == "/api/models/local":
+                    self._json(local_status(app.providers))
                 elif path == "/api/history":
                     self._json({"bench_runs": read_events(app.project_root, "bench-runs")})
                 elif path.startswith("/api/runs/") and path.endswith(("/export.csv", "/export.png")):
@@ -165,6 +189,10 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     )
                 elif path == "/api/models/discover":
                     self._json(app.discover_provider(str(payload.get("provider", ""))))
+                elif path == "/api/models/test":
+                    self._json(app.test_model(str(payload.get("model") or payload.get("tier") or "")))
+                elif path == "/api/models":
+                    self._json(app.add_model(str(payload.get("provider", "")), str(payload.get("model", ""))))
                 elif path == "/api/bench":
                     state = app.bench.start(payload, "fixture:echo")
                     self._json({"run_id": state.run_id}, HTTPStatus.ACCEPTED)

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from clawreinforce.core.models import ProviderResult
+from clawreinforce.errors import ClawError
 
 
 DEFAULTS: dict[str, dict[str, Any]] = {
@@ -34,6 +35,11 @@ class ProviderHub:
         except (OSError, json.JSONDecodeError):
             return {}
 
+    def _save_file(self) -> None:
+        path = self.project_root / ".clawreinforce" / "providers.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self.config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
     def _settings(self, provider: str) -> dict[str, Any]:
         values = {**DEFAULTS.get(provider, {}), **dict(self.config.get(provider, {}))}
         env_name = values.get("env")
@@ -57,6 +63,8 @@ class ProviderHub:
                     "key_source": settings["key_source"],
                     "configured": configured,
                     "state": "ready" if configured else "key_missing",
+                    "models": list(settings.get("models") or []),
+                    "default_model": settings.get("default_model"),
                     "last_error": None,
                 }
             )
@@ -64,6 +72,23 @@ class ProviderHub:
             {"provider": "fixture", "base_url": None, "key_source": "built_in", "configured": True, "state": "ready", "last_error": None}
         )
         return rows
+
+    def remember_models(self, provider: str, models: list[str]) -> dict[str, Any]:
+        if provider not in DEFAULTS and provider not in self.config:
+            raise ClawError("provider.unknown", "validation", f"unknown provider: {provider}", provider=provider)
+        cleaned = sorted({str(model).strip() for model in models if str(model).strip()})
+        values = dict(self.config.get(provider, {}))
+        values["models"] = cleaned
+        self.config[provider] = values
+        self._save_file()
+        return next(row for row in self.status() if row["provider"] == provider)
+
+    def add_model(self, provider: str, model: str) -> dict[str, Any]:
+        name = str(model).strip()
+        if not name:
+            raise ClawError("model.missing", "validation", "model is required", provider=provider)
+        current = self._settings(provider).get("models") if provider in DEFAULTS or provider in self.config else []
+        return self.remember_models(provider, [*(current or []), name])
 
     def execute(self, tier: str, system: str, user: str, max_tokens: int = 4096) -> ProviderResult:
         if ":" not in tier:

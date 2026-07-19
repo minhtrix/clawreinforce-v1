@@ -110,10 +110,11 @@ def _custom_status(hub: ProviderHub, name: str, get_json: JsonGetter) -> dict[st
     return row
 
 
-def local_status(hub: ProviderHub, get_json: JsonGetter = _get_json) -> dict[str, Any]:
+def local_status(hub: ProviderHub, get_json: JsonGetter | None = None) -> dict[str, Any]:
+    getter = get_json or _get_json
     custom = []
     for name in sorted(set(hub.config) - set(DEFAULTS)):
         settings = hub._settings(name)
         if settings.get("enabled", True) and not settings.get("requires_key", False) and settings.get("base_url"):
-            custom.append(_custom_status(hub, name, get_json))
-    return {"ollama": _ollama_status(hub, get_json), "custom": custom}
+            custom.append(_custom_status(hub, name, getter))
+    return {"ollama": _ollama_status(hub, getter), "custom": custom}

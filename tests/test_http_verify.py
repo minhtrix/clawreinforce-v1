@@ -175,3 +175,19 @@ def test_unknown_model_provider_error_is_structured(tmp_path: Path) -> None:
             raise AssertionError("request should fail")
     assert error["code"] == "provider.unknown"
     assert error["context"] == {"provider": "does-not-exist"}
+
+
+def test_model_test_local_status_and_management_http(tmp_path: Path, monkeypatch) -> None:
+    def local_json(url: str, headers: dict[str, str] | None = None, timeout: float = 2.0) -> dict:
+        if url.endswith("/api/ps"):
+            return {"models": [{"name": "llama3.1:8b", "size_vram": 1234}]}
+        return {"models": [{"name": "llama3.1:8b"}]}
+
+    monkeypatch.setattr("clawreinforce.adapters.provider_probe._get_json", local_json)
+    with api_server(tmp_path) as base:
+        probe = request(base, "/api/models/test", {"model": "fixture:echo"})
+        local = request(base, "/api/models/local")
+        catalog = request(base, "/api/models", {"provider": "openai", "model": "gpt-5.6-sol"})
+    assert probe["ok"] is True and isinstance(probe["latency_ms"], int)
+    assert local["ollama"]["running"] == [{"name": "llama3.1:8b", "vram_bytes": 1234}]
+    assert {row["tier"] for row in catalog["models"]} >= {"fixture:echo", "openai:gpt-5.6-sol"}
