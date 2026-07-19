@@ -91,22 +91,43 @@
 
     <section class="view" id="improve" aria-labelledby="improve-title" hidden>
       <div class="hero-copy compact">
-        <p class="eyebrow">HONEST IMPROVEMENT STATE</p>
-        <h1 id="improve-title">The gates are real. The automated loop is not here yet.</h1>
-        <p>clawreinforce already knows how to accept or reject measured changes. It does not yet orchestrate model rewrites.</p>
+        <p class="eyebrow">GOLDEN REWRITE LOOP</p>
+        <h1 id="improve-title">The model proposes. Deterministic checks decide.</h1>
+        <p>Grade every golden case, rewrite only around measured failures, and keep a candidate only when its target turns green with zero regressions.</p>
       </div>
-      <section class="improve-state" aria-live="polite">
-        <div class="result-heading"><span>Capability status</span><span class="status neutral" id="improve-status">CHECKING API</span></div>
+      <div class="improve-grid">
+        <section class="panel form-stack" aria-label="Improve controls">
+          <label for="improve-skill">Skill from the API</label>
+          <select id="improve-skill"><option value="">Loading project skills…</option></select>
+          <label for="improve-source">Project-local skill path</label>
+          <input id="improve-source" autocomplete="off" placeholder="examples/improvable-uppercase-skill">
+          <label for="improve-tier">Grader and proposal tier</label>
+          <select id="improve-tier"><option value="">Loading model tiers…</option></select>
+          <label for="improve-strategy">Rewrite strategy</label>
+          <select id="improve-strategy"><option value="instruct">instruct — rewrite rules</option><option value="fewshot">fewshot — verify examples</option></select>
+          <label for="improve-max">Maximum rewrites</label>
+          <input id="improve-max" type="number" min="1" max="20" value="3">
+          <label class="checkbox-row"><input id="improve-apply" type="checkbox"><span>Write the accepted body to SKILL.md</span></label>
+          <button class="primary" id="improve-button">Run deterministic improve</button>
+          <pre class="structured-error" id="improve-error" hidden></pre>
+        </section>
+        <section class="result-shell" aria-live="polite">
+          <div class="result-heading"><span>Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
+          <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, a tier, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-apply-state"></small></div>
+          <div class="evidence-section">
+            <h2>Golden cases</h2>
+            <table><thead><tr><th>Case</th><th>Before</th><th>After</th></tr></thead><tbody id="improve-cases"><tr><td colspan="3" class="empty-state">Run Improve to grade all declared cases.</td></tr></tbody></table>
+          </div>
+          <div class="evidence-section"><h2>Accepted diff</h2><pre class="diff-output" id="improve-diff">An accepted body diff appears here. Rejected proposals never replace it.</pre></div>
+          <div class="evidence-section"><h2>Gate reasons</h2><ol class="attempt-list" id="improve-attempts"><li class="empty-state">Each proposal will show its target, verdict, regressions, and verified examples.</li></ol></div>
+        </section>
+      </div>
+      <section class="improve-state" aria-label="Acceptance contract">
+        <div class="result-heading"><span>Acceptance contract</span><span class="status neutral" id="improve-capability">CHECKING API</span></div>
         <p class="improve-explanation" id="improve-explanation">Reading the implemented gate state from the API…</p>
         <ol class="gate-list" id="improve-gates">
           <li class="empty-state">If this stays empty, start <code>clawreinforce serve</code> and reload the tab.</li>
         </ol>
-        <aside class="release-callout">
-          <small>ORCHESTRATOR</small>
-          <strong id="improve-release">Checking release status…</strong>
-          <p>No proposal button is shown until the product can run and judge that loop truthfully.</p>
-        </aside>
-        <pre class="structured-error" id="improve-error" hidden></pre>
       </section>
     </section>
 

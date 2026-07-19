@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 from clawreinforce.adapters.providers import ProviderHub
 from clawreinforce.adapters.run_broker import RunBroker
 from clawreinforce.adapters.http_arena import BenchManager, task_catalog
+from clawreinforce.adapters.http_improve import improve_source
 from clawreinforce.adapters.http_verify import (
     certify_source,
     check_certificate,
@@ -175,6 +176,18 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     self._json({"cancelled": app.runs.cancel(run_id)}, 200 if app.runs.get(run_id) else 404)
                 elif path == "/api/tasks/health":
                     self._json(app.bench.health(str(payload["path"])))
+                elif path == "/api/improve":
+                    self._json(
+                        improve_source(
+                            app.project_root,
+                            str(payload.get("source", "")),
+                            str(payload.get("tier", "")),
+                            str(payload.get("strategy", "")),
+                            int(payload.get("max_rewrites", 3)),
+                            bool(payload.get("apply")),
+                            app.providers.execute,
+                        )
+                    )
                 elif path == "/api/improve/gate":
                     decision = gate_rewrite(dict(payload["before"]), dict(payload["after"]), str(payload["target_case"]))
                     self._json(decision.to_dict())

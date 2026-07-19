@@ -40,6 +40,7 @@ def test_verify_http_flow_uses_fixture_without_keys(tmp_path: Path) -> None:
         catalog = request(base, "/api/skills")
         assert {row["source"] for row in catalog["skills"]} == {
             "examples/hello-skill",
+            "examples/improvable-uppercase-skill",
             "examples/uppercase-skill",
         }
 
@@ -88,12 +89,42 @@ def test_verify_http_errors_are_structured(tmp_path: Path) -> None:
         }
 
 
-def test_improve_http_status_is_honest_about_missing_orchestrator(tmp_path: Path) -> None:
+def test_improve_http_runs_dry_run_then_applies_accepted_body(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         status = request(base, "/api/improve/status")
-    assert status["status"] == "gates_ready"
-    assert [gate["id"] for gate in status["gates"]] == ["rewrite", "uplift"]
-    assert status["orchestrator"] == {"available": False, "message": "Loop lands next release"}
+        source = "examples/improvable-uppercase-skill"
+        skill_file = tmp_path / source / "SKILL.md"
+        before = skill_file.read_text(encoding="utf-8")
+        dry_run = request(
+            base,
+            "/api/improve",
+            {
+                "source": source,
+                "tier": "fixture:upper-if-skilled",
+                "strategy": "fewshot",
+                "max_rewrites": 1,
+                "apply": False,
+            },
+        )
+        assert skill_file.read_text(encoding="utf-8") == before
+        applied = request(
+            base,
+            "/api/improve",
+            {
+                "source": source,
+                "tier": "fixture:upper-if-skilled",
+                "strategy": "fewshot",
+                "max_rewrites": 1,
+                "apply": True,
+            },
+        )
+    assert status["status"] == "loop_ready"
+    assert status["orchestrator"] == {"available": True, "message": "Golden rewrite loop available"}
+    assert dry_run["status"] == "completed" and dry_run["accepted"]
+    assert dry_run["diff"].startswith("--- SKILL.md:before")
+    assert dry_run["attempts"][0]["reason"] == "target turned green and no prior pass regressed"
+    assert applied["applied"]
+    assert "## Examples (verified)" in skill_file.read_text(encoding="utf-8")
 
 
 def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> None:

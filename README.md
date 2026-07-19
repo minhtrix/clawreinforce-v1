@@ -25,6 +25,16 @@ bench    -> without_skill: 0.0, with_skill: 1.0, uplift: 1.0, coverage: 2/2
 
 Run the tests with `python -m pip install -e ".[dev]"` followed by `python -m pytest`.
 
+## Improve a failing skill
+
+Improve is dry-run by default: the selected tier grades every golden case, proposes at most the requested number of rewrites, and prints the accepted unified diff. Add `--apply` only when the gated body should replace the current instructions.
+
+```console
+$ clawreinforce improve examples/improvable-uppercase-skill --tier fixture:upper-if-skilled --strategy fewshot --max-rewrites 3
+```
+
+`instruct` requests a complete rule rewrite. `fewshot` requests outputs for failing cases and inserts only examples that pass those cases' real deterministic checks. Every candidate must turn its target green without regressing any previous pass.
+
 ## GUI
 
 ```console

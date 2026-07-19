@@ -1,0 +1,7 @@
+[
+  {
+    "id": "upper-hello",
+    "input": "hello",
+    "check": {"kind": "equals", "value": "HELLO"}
+  }
+]

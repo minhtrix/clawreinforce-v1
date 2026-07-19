@@ -19,10 +19,10 @@ Executor = Callable[[str, str, str], ProviderResult]
 
 def improve_status() -> dict[str, object]:
     return {
-        "status": "gates_ready",
+        "status": "loop_ready",
         "explanation": (
-            "The deterministic acceptance gates are implemented. The proposal orchestrator that would run "
-            "model rewrites repeatedly is not implemented yet."
+            "The proposal model may rewrite instructions or mine examples, but deterministic golden checks "
+            "alone decide whether each candidate survives."
         ),
         "gates": [
             {
@@ -36,7 +36,7 @@ def improve_status() -> dict[str, object]:
                 "explanation": "Accept only when mean score rises; strict mode also rejects any per-model regression.",
             },
         ],
-        "orchestrator": {"available": False, "message": "Loop lands next release"},
+        "orchestrator": {"available": True, "message": "Golden rewrite loop available"},
     }
 
 

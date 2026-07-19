@@ -97,7 +97,7 @@ clawreinforce serve --project . --host 127.0.0.1 --port 8788
 Open [http://127.0.0.1:8788](http://127.0.0.1:8788), then show:
 
 1. **Verify (20s):** select `uppercase-skill` and `fixture:upper-if-skilled`; point to findings, 1/1 coverage, fingerprint, signature check, badge, then the install verdict.
-2. **Improve (10s):** point out the two implemented gates and the explicit “Loop lands next release” boundary. There is no fake proposal button.
+2. **Improve (10s):** select `improvable-uppercase-skill`, keep `fixture:upper-if-skilled` and `instruct`, then run the dry-run. Show the failing case turning green, the accepted unified diff, and the zero-regression gate reason.
 3. **Arena (20s):** run two fixture trials; rows arrive from SSE, uplift becomes `+1.00`, and CSV/PNG downloads activate.
 4. **Models (10s):** show `configured`, `key_source`, `last_error`, then click **Discover fixture**. No secret value is rendered.
 
