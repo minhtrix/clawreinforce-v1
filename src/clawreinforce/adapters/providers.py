@@ -65,7 +65,7 @@ class ProviderHub:
         )
         return rows
 
-    def execute(self, tier: str, system: str, user: str) -> ProviderResult:
+    def execute(self, tier: str, system: str, user: str, max_tokens: int = 4096) -> ProviderResult:
         if ":" not in tier:
             return _error("tier.invalid", "validation", "tier must be provider:model", tier=tier)
         provider, model = tier.split(":", 1)
@@ -81,13 +81,13 @@ class ProviderHub:
             return _error("provider.key_missing", "unavailable", f"{provider} API key is missing", provider=provider)
         try:
             if kind == "openai":
-                return self._openai(model, system, user, settings)
+                return self._openai(model, system, user, settings, max_tokens)
             if kind == "anthropic":
-                return self._anthropic(model, system, user, settings)
+                return self._anthropic(model, system, user, settings, max_tokens)
             if kind == "ollama":
-                return self._ollama(model, system, user, settings)
+                return self._ollama(model, system, user, settings, max_tokens)
             if provider in self.config:
-                return self._compatible(model, system, user, settings)
+                return self._compatible(model, system, user, settings, max_tokens)
             return _error("provider.unknown", "validation", f"unknown provider: {provider}")
         except (OSError, urllib.error.URLError, json.JSONDecodeError, KeyError, TypeError) as exc:
             return _error("provider.request_failed", "unavailable", str(exc), provider=provider, model=model)
@@ -129,37 +129,37 @@ class ProviderHub:
         with urllib.request.urlopen(request, timeout=90) as response:
             return json.loads(response.read().decode("utf-8"))
 
-    def _openai(self, model: str, system: str, user: str, settings: dict[str, Any]) -> ProviderResult:
+    def _openai(self, model: str, system: str, user: str, settings: dict[str, Any], max_tokens: int) -> ProviderResult:
         payload = {
             "model": model,
             "instructions": system,
             "input": user,
             "reasoning": {"effort": "low"},
             "text": {"verbosity": "low"},
-            "max_output_tokens": 4096,
+            "max_output_tokens": max_tokens,
         }
         data = self._request("POST", settings["base_url"].rstrip("/") + "/responses", payload, self._headers("openai", settings))
         output = data.get("output_text") or _responses_text(data.get("output", []))
         usage = data.get("usage", {})
         return ProviderResult("completed", output=output, input_tokens=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"))
 
-    def _anthropic(self, model: str, system: str, user: str, settings: dict[str, Any]) -> ProviderResult:
-        payload = {"model": model, "system": system, "messages": [{"role": "user", "content": user}], "max_tokens": 4096}
+    def _anthropic(self, model: str, system: str, user: str, settings: dict[str, Any], max_tokens: int) -> ProviderResult:
+        payload = {"model": model, "system": system, "messages": [{"role": "user", "content": user}], "max_tokens": max_tokens}
         data = self._request("POST", settings["base_url"].rstrip("/") + "/messages", payload, self._headers("anthropic", settings))
         output = "".join(item.get("text", "") for item in data.get("content", []) if item.get("type") == "text")
         usage = data.get("usage", {})
         return ProviderResult("completed", output=output, input_tokens=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"))
 
-    def _ollama(self, model: str, system: str, user: str, settings: dict[str, Any]) -> ProviderResult:
-        payload = {"model": model, "stream": False, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    def _ollama(self, model: str, system: str, user: str, settings: dict[str, Any], max_tokens: int) -> ProviderResult:
+        payload = {"model": model, "stream": False, "options": {"num_predict": max_tokens}, "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         data = self._request("POST", settings["base_url"].rstrip("/") + "/api/chat", payload, self._headers("ollama", settings))
         return ProviderResult("completed", output=data["message"]["content"], input_tokens=data.get("prompt_eval_count"), output_tokens=data.get("eval_count"))
 
-    def _compatible(self, model: str, system: str, user: str, settings: dict[str, Any]) -> ProviderResult:
+    def _compatible(self, model: str, system: str, user: str, settings: dict[str, Any], max_tokens: int) -> ProviderResult:
         payload = {
             "model": model,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "max_tokens": 4096,
+            "max_tokens": max_tokens,
         }
         url = settings["base_url"].rstrip("/") + "/chat/completions"
         headers = self._headers("compatible", settings)
