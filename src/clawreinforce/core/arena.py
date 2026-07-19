@@ -54,6 +54,19 @@ class BenchReport:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "BenchReport":
+        return cls(
+            str(value["run_id"]),
+            str(value["created_at"]),
+            str(value["task"]),
+            str(value["skill"]),
+            str(value["fingerprint"]),
+            [ArenaRow(**row) for row in value["rows"]],
+            dict(value["summary"]),
+            bool(value.get("cancelled", False)),
+        )
+
 
 Executor = Callable[[str, str, str], ProviderResult]
 EventSink = Callable[[dict[str, Any]], None]

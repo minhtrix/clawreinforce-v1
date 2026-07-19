@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import threading
 import time
-import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,7 +10,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from clawreinforce.adapters.providers import ProviderHub
-from clawreinforce.adapters.run_broker import RunBroker, RunState
+from clawreinforce.adapters.run_broker import RunBroker
+from clawreinforce.adapters.http_arena import BenchManager, task_catalog
 from clawreinforce.adapters.http_verify import (
     certify_source,
     check_certificate,
@@ -20,10 +19,8 @@ from clawreinforce.adapters.http_verify import (
     scan_source,
     skill_catalog,
 )
-from clawreinforce.core.arena import load_task, run_bench, task_health
 from clawreinforce.core.improve import gate_rewrite, improve_status, uplift_gate
-from clawreinforce.core.ledger import append_event, read_events
-from clawreinforce.core.task_source import fetched_task
+from clawreinforce.core.ledger import read_events
 from clawreinforce.errors import ClawError
 
 
@@ -33,6 +30,7 @@ class AppState:
         self.web_root = web_root.resolve()
         self.providers = ProviderHub(self.project_root)
         self.runs = RunBroker()
+        self.bench = BenchManager(self.project_root, self.providers, self.runs)
         self._model_cache: tuple[float, dict[str, Any]] | None = None
 
     def model_catalog(self, refresh: bool = False) -> dict[str, Any]:
@@ -62,44 +60,6 @@ class AppState:
         self._model_cache = (time.monotonic(), payload)
         return payload
 
-    def start_bench(self, payload: dict[str, Any]) -> RunState:
-        public_id = uuid.uuid4().hex[:12]
-        state = self.runs.create(public_id)
-
-        def worker() -> None:
-            try:
-                with fetched_skill(str(payload["skill"])) as skill_root, fetched_task(str(payload["task"])) as task_root:
-                    skill = load_skill(skill_root)
-                    task = load_task(task_root)
-                    tiers = list(payload.get("tiers") or [self.model_catalog()["preset"]])
-                    trials = int(payload.get("trials", 1))
-
-                    def emit(event: dict[str, Any]) -> None:
-                        state.emit({**event, "run_id": public_id})
-
-                    report = run_bench(
-                        task,
-                        skill,
-                        tiers,
-                        trials,
-                        self.providers.execute,
-                        emit=emit,
-                        is_cancelled=lambda: state.cancelled,
-                        run_id=public_id,
-                    )
-                store = self.project_root / ".clawreinforce" / "bench"
-                store.mkdir(parents=True, exist_ok=True)
-                report_path = store / f"{report.run_id}.json"
-                report_path.write_text(json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
-                append_event(self.project_root, "bench-runs", {"run_id": report.run_id, "report_path": str(report_path), "summary": report.summary})
-            except Exception as exc:
-                error = _error(exc)
-                state.emit({"type": "run_failed", "run_id": public_id, "error": error})
-
-        threading.Thread(target=worker, name=f"bench-{public_id}", daemon=True).start()
-        return state
-
-
 def _error(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, ClawError):
         return exc.detail.to_dict()
@@ -125,6 +85,14 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
             length = int(self.headers.get("Content-Length", "0"))
             return json.loads(self.rfile.read(length) or b"{}")
 
+        def _bytes(self, value: bytes, content_type: str, filename: str) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(len(value)))
+            self.end_headers()
+            self.wfile.write(value)
+
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
             path = parsed.path
@@ -133,10 +101,16 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     self._json({"status": "ok", "product": "clawreinforce"})
                 elif path == "/api/skills":
                     self._json(skill_catalog(app.project_root))
+                elif path == "/api/tasks":
+                    self._json(task_catalog(app.project_root))
                 elif path == "/api/improve/status":
                     self._json(improve_status())
                 elif path == "/api/models":
                     self._json(app.model_catalog("refresh=1" in parsed.query))
+                elif path.startswith("/api/runs/") and path.endswith(("/export.csv", "/export.png")):
+                    parts = path.split("/")
+                    kind = parts[-1].split(".")[-1]
+                    self._bytes(*app.bench.export(parts[3], kind))
                 elif path.startswith("/api/runs/") and path.endswith("/events"):
                     self._sse(path.split("/")[3])
                 elif path.startswith("/api/runs/"):
@@ -176,15 +150,13 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                         )
                     )
                 elif path == "/api/bench":
-                    state = app.start_bench(payload)
+                    state = app.bench.start(payload, "fixture:echo")
                     self._json({"run_id": state.run_id}, HTTPStatus.ACCEPTED)
                 elif path.startswith("/api/runs/") and path.endswith("/cancel"):
                     run_id = path.split("/")[3]
                     self._json({"cancelled": app.runs.cancel(run_id)}, 200 if app.runs.get(run_id) else 404)
                 elif path == "/api/tasks/health":
-                    with fetched_task(str(payload["path"])) as fetched:
-                        task = load_task(fetched)
-                        self._json({"task": task.name, "source": task.source, "difficulty": task.difficulty, **task_health(task)})
+                    self._json(app.bench.health(str(payload["path"])))
                 elif path == "/api/improve/gate":
                     decision = gate_rewrite(dict(payload["before"]), dict(payload["after"]), str(payload["target_case"]))
                     self._json(decision.to_dict())

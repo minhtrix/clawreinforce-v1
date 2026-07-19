@@ -114,19 +114,20 @@
       <div class="hero-copy compact">
         <p class="eyebrow">UPLIFT, NOT VIBES</p>
         <h1 id="arena-title">Same task. Same model. Skill off, then on.</h1>
+        <p>Rows arrive from the live server stream. Local fixture sources are graded; external SkillsBench verifiers remain explicitly ungraded.</p>
       </div>
       <div class="arena-controls">
-        <label>Difficulty<select id="arena-task-preset">
-          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/court-form-filling">Easy · court-form-filling</option>
-          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/edit-pdf">Medium · edit-pdf</option>
-          <option value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/3d-scan-calc">Hard · 3d-scan-calc</option>
-        </select></label>
-        <label>SkillsBench task URL<input id="arena-task" value="https://github.com/benchflow-ai/skillsbench/tree/main/tasks/court-form-filling"></label>
-        <label>ClawHub skill URL<input id="arena-skill" value="https://clawhub.ai/jaaneek/skills/x-search"></label>
-        <label>Ollama Cloud model<input id="arena-tier" value="ollama-cloud:"></label>
+        <label>Task from the API<select id="arena-task-picker"><option value="">Loading tasks…</option></select></label>
+        <label>Task path or URL<input id="arena-task" placeholder="examples/uppercase-task or SkillsBench URL"></label>
+        <label>Skill from the API<select id="arena-skill-picker"><option value="">Loading skills…</option></select></label>
+        <label>Skill path, GitHub URL, or ClawHub slug<input id="arena-skill" placeholder="examples/uppercase-skill or ClawHub slug"></label>
+        <label>Model tier<select id="arena-tier"><option value="">Loading tiers…</option></select></label>
         <label>Trials<input id="arena-trials" type="number" min="1" max="20" value="2"></label>
-        <button class="primary" id="bench-button">Start benchmark</button>
-        <button class="secondary" id="cancel-button" disabled>Cancel</button>
+        <div class="arena-actions">
+          <button class="primary" id="bench-button">Start benchmark</button>
+          <button class="secondary" id="cancel-button" disabled>Cancel</button>
+        </div>
+        <pre class="structured-error" id="arena-error" hidden></pre>
       </div>
       <div class="metrics">
         <article><small>WITHOUT SKILL</small><strong id="metric-without">—</strong></article>
@@ -135,10 +136,17 @@
         <article><small>COVERAGE</small><strong id="metric-coverage">0 / 0</strong></article>
       </div>
       <div class="grid-shell">
-        <div class="result-heading"><span>Live results grid</span><span class="status neutral" id="arena-status">IDLE</span></div>
+        <div class="result-heading">
+          <span>Live results grid</span>
+          <div class="export-actions">
+            <a class="button-link disabled" id="download-csv" aria-disabled="true">Download CSV</a>
+            <a class="button-link disabled" id="download-png" aria-disabled="true">Download PNG</a>
+            <span class="status neutral" id="arena-status">IDLE</span>
+          </div>
+        </div>
         <table>
-          <thead><tr><th>Tier</th><th>Trial</th><th>Without</th><th>With skill</th><th>Uplift</th><th>Status</th></tr></thead>
-          <tbody id="arena-rows"><tr><td colspan="6" class="empty">Results stream here as each model finishes.</td></tr></tbody>
+          <thead><tr><th>Tier</th><th>Trial</th><th>Without</th><th>With skill</th><th>Uplift</th><th>Status</th><th>Error</th></tr></thead>
+          <tbody id="arena-rows"><tr><td colspan="7" class="empty">Choose a task, skill, tier, and start. Each completed trial streams into this table.</td></tr></tbody>
         </table>
       </div>
     </section>

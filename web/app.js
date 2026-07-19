@@ -1,6 +1,7 @@
-import { $, $$, api, errorText, setStatus } from "/ui.js";
+import { $, $$, api, errorText } from "/ui.js";
 import { initVerify } from "/verify.js";
 import { initImprove } from "/improve.js";
+import { initArena } from "/arena.js";
 
 function showTab(name) {
   $$(".tab").forEach((button) => {
@@ -19,86 +20,6 @@ function showTab(name) {
 
 $$('.tab').forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1) || "verify"));
-
-let currentRun = null;
-let stream = null;
-let arenaRows = [];
-
-function renderArenaRow(row) {
-  const empty = $("#arena-rows .empty");
-  if (empty) empty.parentElement.remove();
-  const tr = document.createElement("tr");
-  const values = [row.tier, row.trial, row.without_skill, row.with_skill, row.uplift, row.status];
-  values.forEach((value, index) => {
-    const td = document.createElement("td");
-    td.textContent = typeof value === "number" ? (index >= 2 ? value.toFixed(2) : value) : value ?? "n/a";
-    tr.appendChild(td);
-  });
-  $("#arena-rows").appendChild(tr);
-  arenaRows.push(row);
-}
-
-function renderSummary(report) {
-  const summary = report.summary;
-  const format = (value, signed = false) => value == null ? "n/a" : `${signed && value >= 0 ? "+" : ""}${value.toFixed(2)}`;
-  $("#metric-without").textContent = format(summary.without_skill);
-  $("#metric-with").textContent = format(summary.with_skill);
-  $("#metric-uplift").textContent = format(summary.uplift, true);
-  $("#metric-coverage").textContent = `${summary.coverage.completed_rows} / ${summary.coverage.expected_rows}`;
-}
-
-function listenToRun(runId) {
-  stream = new EventSource(`/api/runs/${runId}/events`);
-  stream.addEventListener("model_row", (event) => renderArenaRow(JSON.parse(event.data).row));
-  stream.addEventListener("progress", (event) => {
-    const value = JSON.parse(event.data);
-    $("#metric-coverage").textContent = `${value.completed} / ${value.total}`;
-  });
-  ["run_completed", "run_cancelled"].forEach((type) => stream.addEventListener(type, (event) => {
-    const value = JSON.parse(event.data);
-    renderSummary(value.report);
-    setStatus($("#arena-status"), type === "run_completed" ? "COMPLETE" : "CANCELLED", type === "run_completed" ? "good" : "warn");
-    $("#cancel-button").disabled = true;
-    stream.close();
-  }));
-  stream.addEventListener("run_failed", (event) => {
-    setStatus($("#arena-status"), "FAILED", "bad");
-    $("#cancel-button").disabled = true;
-    $("#arena-rows").innerHTML = `<tr><td colspan="6" class="empty"></td></tr>`;
-    $("#arena-rows .empty").textContent = errorText(JSON.parse(event.data).error);
-    stream.close();
-  });
-}
-
-$("#bench-button").addEventListener("click", async () => {
-  if (stream) stream.close();
-  arenaRows = [];
-  $("#arena-rows").innerHTML = '<tr><td colspan="6" class="empty">Starting run…</td></tr>';
-  setStatus($("#arena-status"), "RUNNING", "warn");
-  try {
-    const payload = {
-      task: $("#arena-task").value.trim(),
-      skill: $("#arena-skill").value.trim(),
-      tiers: [$("#arena-tier").value.trim()],
-      trials: Number($("#arena-trials").value),
-    };
-    const result = await api("/api/bench", { method: "POST", body: JSON.stringify(payload) });
-    currentRun = result.run_id;
-    $("#cancel-button").disabled = false;
-    listenToRun(currentRun);
-  } catch (error) {
-    setStatus($("#arena-status"), "ERROR", "bad");
-    $("#arena-rows .empty").textContent = errorText(error);
-  }
-});
-
-$("#cancel-button").addEventListener("click", async () => {
-  if (currentRun) await api(`/api/runs/${currentRun}/cancel`, { method: "POST", body: "{}" });
-});
-
-$("#arena-task-preset").addEventListener("change", (event) => {
-  $("#arena-task").value = event.target.value;
-});
 
 let providers = [];
 let models = [];
@@ -178,4 +99,5 @@ $("#use-arena-model").addEventListener("click", () => {
 showTab(location.hash.slice(1) || "verify");
 initVerify();
 initImprove();
+initArena();
 loadModels();
