@@ -127,6 +127,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     self._json(improve_status())
                 elif path == "/api/models":
                     self._json(app.model_catalog("refresh=1" in parsed.query))
+                elif path == "/api/history":
+                    self._json({"bench_runs": read_events(app.project_root, "bench-runs")})
                 elif path.startswith("/api/runs/") and path.endswith(("/export.csv", "/export.png")):
                     parts = path.split("/")
                     kind = parts[-1].split(".")[-1]
@@ -197,8 +199,6 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                 elif path == "/api/improve/uplift-gate":
                     decision = uplift_gate(dict(payload["before"]), dict(payload["after"]), strict=bool(payload.get("strict")))
                     self._json(decision.to_dict())
-                elif path == "/api/history":
-                    self._json({"bench_runs": read_events(Path(payload["skill"]), "bench-runs")})
                 else:
                     self._json({"error": {"code": "route.not_found"}}, 404)
             except Exception as exc:

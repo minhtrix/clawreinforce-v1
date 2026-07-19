@@ -115,6 +115,16 @@
           <div class="result-heading"><span>Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
           <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, a tier, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-apply-state"></small></div>
           <div class="evidence-section">
+            <h2>Loop phases</h2>
+            <ol class="phase-checklist" id="improve-phases">
+              <li data-phase="measure"><span>1</span><div><strong>Measure</strong><small>Waiting for a run.</small></div></li>
+              <li data-phase="propose"><span>2</span><div><strong>Propose</strong><small>Model proposal pending.</small></div></li>
+              <li data-phase="remeasure"><span>3</span><div><strong>Re-measure</strong><small>Candidate grading pending.</small></div></li>
+              <li data-phase="gate"><span>4</span><div><strong>Gate</strong><small>Acceptance decision pending.</small></div></li>
+            </ol>
+          </div>
+          <div class="evidence-section"><h2>Baseline → best by model</h2><div id="improve-model-lines" class="model-score-lines"><p class="empty-state">Run Improve to compare the selected model against its accepted best body.</p></div></div>
+          <div class="evidence-section">
             <h2>Golden cases</h2>
             <table><thead><tr><th>Case</th><th>Before</th><th>After</th></tr></thead><tbody id="improve-cases"><tr><td colspan="3" class="empty-state">Run Improve to grade all declared cases.</td></tr></tbody></table>
           </div>
@@ -156,6 +166,7 @@
         <article class="accent"><small>UPLIFT</small><strong id="metric-uplift">—</strong></article>
         <article><small>COVERAGE</small><strong id="metric-coverage">0 / 0</strong></article>
       </div>
+      <p class="usage-line" id="arena-usage">Token and cost totals appear after a run; unknown provider pricing remains unknown.</p>
       <div class="grid-shell">
         <div class="result-heading">
           <span>Live results grid</span>
@@ -172,6 +183,16 @@
         <div class="arena-reasons" id="arena-row-reasons" aria-live="polite">
           <p class="empty-state">Reasons for ungraded or partial rows will appear here as trials complete.</p>
         </div>
+      </div>
+      <div class="arena-support-grid">
+        <section class="activity-panel" aria-live="polite">
+          <div class="result-heading"><span>Live event feed</span><span class="status neutral" id="arena-feed-status">WAITING</span></div>
+          <ol id="arena-live-feed" class="activity-feed"><li class="empty-state">Start a benchmark to stream run, row, progress, and completion events here.</li></ol>
+        </section>
+        <details class="history-panel">
+          <summary><span>Past arena runs from the ledger</span><small id="arena-history-count">Loading…</small></summary>
+          <div id="arena-history"><p class="empty-state">Loading the append-only bench ledger…</p></div>
+        </details>
       </div>
     </section>
 

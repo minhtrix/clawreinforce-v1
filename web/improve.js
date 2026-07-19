@@ -1,6 +1,58 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
 
 
+function setPhase(name, state, message) {
+  const item = $(`#improve-phases [data-phase="${name}"]`);
+  item.className = state;
+  item.querySelector("small").textContent = message;
+}
+
+
+function runningPhases() {
+  setPhase("measure", "active", "Grading every declared golden case…");
+  setPhase("propose", "pending", "Starts only when a case fails.");
+  setPhase("remeasure", "pending", "Each proposal is graded again.");
+  setPhase("gate", "pending", "Only target-green, zero-regression bodies survive.");
+}
+
+
+function renderPhases(result) {
+  const attempts = result.attempts || [];
+  setPhase("measure", "complete", `${Object.keys(result.before).length} golden case(s) graded.`);
+  if (!attempts.length) {
+    setPhase("propose", "skipped", "Skipped: the original body was already green.");
+    setPhase("remeasure", "skipped", "Skipped: no candidate was needed.");
+    setPhase("gate", "complete", "Kept the original body; no rewrite was needed.");
+    return;
+  }
+  setPhase("propose", "complete", `${attempts.length} model proposal(s) received.`);
+  setPhase("remeasure", "complete", `${attempts.length} candidate body/bodies re-graded.`);
+  setPhase("gate", result.accepted ? "complete" : "rejected", result.reason);
+}
+
+
+function passRate(cases) {
+  const values = Object.values(cases);
+  return values.length ? values.filter(Boolean).length / values.length : null;
+}
+
+
+function renderModelLine(result) {
+  const before = passRate(result.before);
+  const after = passRate(result.after);
+  const line = document.createElement("div");
+  line.className = "model-score-line";
+  const model = document.createElement("code");
+  model.textContent = result.tier;
+  const scores = document.createElement("strong");
+  scores.textContent = before == null || after == null ? "ungraded → ungraded" : `${(before * 100).toFixed(0)}% → ${(after * 100).toFixed(0)}%`;
+  const label = document.createElement("small");
+  label.textContent = "baseline → best accepted body";
+  line.append(model, scores, label);
+  $("#improve-model-lines").replaceChildren(line);
+}
+
+
 function gateItem(gate) {
   const item = document.createElement("li");
   item.innerHTML = `<span>IMPLEMENTED</span><div><strong></strong><p></p></div>`;
@@ -40,6 +92,8 @@ function renderReport(result) {
     ? "Accepted body written to SKILL.md."
     : result.dry_run ? "Dry-run only; SKILL.md was not changed." : "No accepted body was available to write.";
   const ids = [...new Set([...Object.keys(result.before), ...Object.keys(result.after)])];
+  renderPhases(result);
+  renderModelLine(result);
   $("#improve-cases").replaceChildren(...ids.map((id) => caseRow(id, result.before[id], result.after[id])));
   $("#improve-diff").textContent = result.diff || "No accepted body change. Inspect the gate reasons below.";
   if (result.attempts.length) {
@@ -56,6 +110,7 @@ async function runImprove() {
   clearError($("#improve-error"));
   const button = $("#improve-button");
   button.disabled = true;
+  runningPhases();
   setStatus($("#improve-status"), "RUNNING", "neutral");
   try {
     const result = await api("/api/improve", {

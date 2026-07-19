@@ -1,4 +1,5 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { loadHistory } from "/arena_history.js";
 
 let currentRun = null;
 let stream = null;
@@ -69,6 +70,27 @@ function renderSummary(report) {
   $("#metric-with").textContent = score(summary.with_skill);
   $("#metric-uplift").textContent = score(summary.uplift, true);
   $("#metric-coverage").textContent = `${summary.coverage.completed_rows} / ${summary.coverage.expected_rows}`;
+  const tokens = summary.input_tokens == null || summary.output_tokens == null
+    ? "tokens unavailable"
+    : `${summary.input_tokens + summary.output_tokens} tokens (${summary.input_tokens} in / ${summary.output_tokens} out)`;
+  const cost = summary.cost_usd == null ? "cost unknown" : `$${summary.cost_usd.toFixed(6)}`;
+  $("#arena-usage").textContent = `${tokens} · ${cost}`;
+}
+
+
+function feed(type, message, tone = "") {
+  const empty = $("#arena-live-feed .empty-state");
+  if (empty) empty.remove();
+  const item = document.createElement("li");
+  item.className = tone;
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString();
+  const event = document.createElement("strong");
+  event.textContent = type.replaceAll("_", " ");
+  const detail = document.createElement("span");
+  detail.textContent = message;
+  item.append(time, event, detail);
+  $("#arena-live-feed").appendChild(item);
 }
 
 
@@ -95,19 +117,33 @@ function finish(type, report) {
   $("#bench-button").disabled = false;
   $("#cancel-button").disabled = true;
   setDownloads(currentRun, true);
+  setStatus($("#arena-feed-status"), complete ? "COMPLETE" : "CANCELLED", complete ? "good" : "warn");
+  setTimeout(loadHistory, 100);
   stream.close();
 }
 
 
 function listen(runId) {
   stream = new EventSource(`/api/runs/${runId}/events`);
-  stream.addEventListener("model_row", (event) => renderRow(JSON.parse(event.data).row));
+  stream.addEventListener("run_started", (event) => {
+    const value = JSON.parse(event.data);
+    feed("run_started", `${value.total} trial row(s) scheduled`);
+  });
+  stream.addEventListener("model_row", (event) => {
+    const row = JSON.parse(event.data).row;
+    renderRow(row);
+    feed("model_row", `${row.tier} · trial ${row.trial} · ${row.status}`, row.status === "completed" ? "good" : "warn");
+  });
   stream.addEventListener("progress", (event) => {
     const value = JSON.parse(event.data);
     $("#metric-coverage").textContent = `${value.completed} / ${value.total}`;
+    feed("progress", `${value.completed} / ${value.total} rows received`);
   });
   ["run_completed", "run_cancelled"].forEach((type) => {
-    stream.addEventListener(type, (event) => finish(type, JSON.parse(event.data).report));
+    stream.addEventListener(type, (event) => {
+      feed(type, type === "run_completed" ? "report and exports are ready" : "partial results were kept", type === "run_completed" ? "good" : "warn");
+      finish(type, JSON.parse(event.data).report);
+    });
   });
   stream.addEventListener("run_failed", (event) => {
     const failure = JSON.parse(event.data).error;
@@ -115,6 +151,8 @@ function listen(runId) {
     $("#bench-button").disabled = false;
     $("#cancel-button").disabled = true;
     $("#arena-rows").innerHTML = '<tr><td colspan="7" class="empty">Fix the structured error, then start a new run.</td></tr>';
+    feed("run_failed", JSON.stringify(failure), "bad");
+    setStatus($("#arena-feed-status"), "FAILED", "bad");
     renderError($("#arena-error"), failure);
     stream.close();
   });
@@ -127,6 +165,8 @@ function listen(runId) {
       context: { run_id: runId },
     });
     setStatus($("#arena-status"), "DISCONNECTED", "bad");
+    setStatus($("#arena-feed-status"), "DISCONNECTED", "bad");
+    feed("stream_disconnected", `run ${runId} ended before a terminal event`, "bad");
   };
 }
 
@@ -135,9 +175,12 @@ async function start() {
   if (stream) stream.close();
   clearError($("#arena-error"));
   setDownloads("", false);
+  $("#arena-live-feed").innerHTML = '<li class="empty-state">Run accepted. Connecting to the live event stream…</li>';
+  $("#arena-usage").textContent = "Measuring token and cost totals; unavailable provider telemetry will stay unknown.";
   $("#arena-row-reasons").innerHTML = '<p class="empty-state">Reasons for ungraded or partial rows will appear here as trials complete.</p>';
   $("#arena-rows").innerHTML = '<tr><td colspan="7" class="empty">Run accepted. Waiting for the first streamed trial…</td></tr>';
   setStatus($("#arena-status"), "RUNNING", "warn");
+  setStatus($("#arena-feed-status"), "LIVE", "warn");
   $("#bench-button").disabled = true;
   try {
     const result = await api("/api/bench", {
@@ -155,6 +198,8 @@ async function start() {
   } catch (failure) {
     $("#bench-button").disabled = false;
     setStatus($("#arena-status"), "ERROR", "bad");
+    setStatus($("#arena-feed-status"), "ERROR", "bad");
+    feed("start_failed", JSON.stringify(failure), "bad");
     renderError($("#arena-error"), failure);
   }
 }
@@ -205,4 +250,5 @@ export function initArena() {
     }
   });
   loadPickers();
+  loadHistory();
 }

@@ -10,22 +10,34 @@ function selectTier(tier) {
 }
 
 
-function renderPicker() {
+function renderPicker(filter = "") {
   const previous = $("#model-select").value;
-  const options = catalog.models.map((row) => {
+  const query = filter.toLowerCase();
+  const rows = catalog.models.filter((row) => `${row.provider} ${row.model} ${row.tier}`.toLowerCase().includes(query));
+  const groups = new Map();
+  rows.forEach((row) => {
+    if (!groups.has(row.provider)) {
+      const group = document.createElement("optgroup");
+      group.label = row.provider;
+      groups.set(row.provider, group);
+    }
     const option = document.createElement("option");
     option.value = row.tier;
-    option.textContent = `${row.model} · ${row.provider}`;
-    return option;
+    option.textContent = row.model;
+    groups.get(row.provider).appendChild(option);
   });
-  if (!options.length) {
+  const nodes = [...groups.values()];
+  if (!nodes.length) {
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "No models discovered — use a provider Discover action";
-    options.push(empty);
+    empty.textContent = filter ? "No matching models — clear the filter or Discover a provider" : "No models discovered — use a provider Discover action";
+    nodes.push(empty);
   }
-  $("#model-select").replaceChildren(...options);
-  selectTier(catalog.models.some((row) => row.tier === previous) ? previous : catalog.preset);
+  $("#model-select").replaceChildren(...nodes);
+  const preferred = rows.some((row) => row.tier === previous)
+    ? previous
+    : rows.some((row) => row.tier === catalog.preset) ? catalog.preset : rows[0]?.tier;
+  selectTier(preferred || "");
   const available = Boolean($("#model-select").value);
   $("#use-verify-model").disabled = !available;
   $("#use-arena-model").disabled = !available;
@@ -74,7 +86,7 @@ async function discover(provider) {
       body: JSON.stringify({ provider }),
     });
     catalog = result;
-    renderPicker();
+    renderPicker($("#model-filter").value);
     renderRows($("#model-filter").value);
     setStatus(
       $("#models-status"),
@@ -147,7 +159,10 @@ function applyTier(selector, tier) {
 
 
 export async function initModels(showTab) {
-  $("#model-filter").addEventListener("input", (event) => renderRows(event.target.value));
+  $("#model-filter").addEventListener("input", (event) => {
+    renderPicker(event.target.value);
+    renderRows(event.target.value);
+  });
   $("#use-verify-model").addEventListener("click", () => {
     applyTier("#verify-tier", $("#model-select").value);
     showTab("verify");
