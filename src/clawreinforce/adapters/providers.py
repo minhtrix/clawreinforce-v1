@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -69,7 +70,7 @@ class ProviderHub:
         if provider == "fixture" and model == "echo":
             return ProviderResult("completed", output=user)
         if provider == "fixture" and model == "upper-if-skilled":
-            return ProviderResult("completed", output=user.upper() if "<skill>" in system else user)
+            return ProviderResult("completed", output=_fixture_upper(system, user))
         settings = self._settings(provider)
         kind = str(settings.get("kind", provider))
         if not settings.get("enabled", True):
@@ -181,6 +182,22 @@ def _responses_text(items: list[dict[str, Any]]) -> str:
         for content in item.get("content", [])
         if content.get("type") == "output_text"
     )
+
+
+def _fixture_upper(system: str, user: str) -> str:
+    if "CLAWREINFORCE_IMPROVE_INSTRUCT" in system:
+        return "Return the supplied text in uppercase. Return only the converted text."
+    if "CLAWREINFORCE_IMPROVE_FEWSHOT" in system:
+        return user.upper()
+    skill_match = re.search(r"<skill>\s*(.*?)\s*</skill>", system, flags=re.DOTALL)
+    body = skill_match.group(1) if skill_match else ""
+    if "uppercase" in body.lower():
+        return user.upper()
+    examples = re.findall(r"- Input: (.*?)\n  Output: (.*?)(?=\n- Input:|\Z)", body, flags=re.DOTALL)
+    for case_input, output in examples:
+        if case_input.strip() == user.strip():
+            return output.strip()
+    return user
 
 
 def _error(code: str, kind: str, message: str, **context: Any) -> ProviderResult:
