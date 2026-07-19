@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from clawreinforce.adapters.providers import ProviderHub
+from clawreinforce.adapters.cli_improve import improve_command
 from clawreinforce.core.badges import badge_svg
 from clawreinforce.core.arena import load_task, run_bench, task_health
 from clawreinforce.core.certificates import issue_certificate, load_or_create_key, sign_envelope, verify_certificate
@@ -120,6 +121,19 @@ def _cmd_models(args: argparse.Namespace) -> int:
     return 0 if not args.probe or payload["probe"]["status"] == "completed" else 1
 
 
+def _cmd_improve(args: argparse.Namespace) -> int:
+    payload, exit_code = improve_command(
+        args.skill,
+        args.tier,
+        args.strategy,
+        args.max_rewrites,
+        args.apply,
+        Path.cwd(),
+    )
+    _print(payload)
+    return exit_code
+
+
 def _cmd_task_check(args: argparse.Namespace) -> int:
     with fetched_task(args.path) as fetched:
         task = load_task(fetched)
@@ -216,6 +230,13 @@ def build_parser() -> argparse.ArgumentParser:
     models.add_argument("--discover")
     models.add_argument("--probe", help="provider:model connectivity test")
     models.set_defaults(func=_cmd_models)
+    improve = commands.add_parser("improve", help="propose and deterministically gate skill-body rewrites")
+    improve.add_argument("skill", help="local skill path or SKILL.md")
+    improve.add_argument("--tier", required=True, help="provider:model used for grading and proposals")
+    improve.add_argument("--strategy", choices=("instruct", "fewshot"), required=True)
+    improve.add_argument("--max-rewrites", type=int, default=3)
+    improve.add_argument("--apply", action="store_true", help="write the accepted body; default prints a dry-run diff")
+    improve.set_defaults(func=_cmd_improve)
     task_check = commands.add_parser("task-check", help="smoke-run a task's hidden grader against its oracle")
     task_check.add_argument("path")
     task_check.set_defaults(func=_cmd_task_check)

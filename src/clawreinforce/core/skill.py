@@ -72,3 +72,12 @@ def load_skill(path: str | Path) -> Skill:
         body=body.strip(),
         cases=_load_cases(root),
     )
+
+
+def render_skill_document(document: str, body: str) -> str:
+    """Replace only the instruction body while preserving exact frontmatter."""
+    if document.startswith("---\n"):
+        end = document.find("\n---\n", 4)
+        if end >= 0:
+            return document[: end + 5] + body.strip() + "\n"
+    return body.strip() + "\n"
