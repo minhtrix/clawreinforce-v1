@@ -86,3 +86,11 @@ def test_verify_http_errors_are_structured(tmp_path: Path) -> None:
             "message": "choose or enter a skill source",
             "context": {},
         }
+
+
+def test_improve_http_status_is_honest_about_missing_orchestrator(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        status = request(base, "/api/improve/status")
+    assert status["status"] == "gates_ready"
+    assert [gate["id"] for gate in status["gates"]] == ["rewrite", "uplift"]
+    assert status["orchestrator"] == {"available": False, "message": "Loop lands next release"}

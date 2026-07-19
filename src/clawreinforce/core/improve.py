@@ -9,6 +9,29 @@ from clawreinforce.core.models import GoldenCase
 VERIFIED_HEADING = "## Examples (verified)"
 
 
+def improve_status() -> dict[str, object]:
+    return {
+        "status": "gates_ready",
+        "explanation": (
+            "The deterministic acceptance gates are implemented. The proposal orchestrator that would run "
+            "model rewrites repeatedly is not implemented yet."
+        ),
+        "gates": [
+            {
+                "id": "rewrite",
+                "name": "Rewrite regression gate",
+                "explanation": "Accept only when the failing target turns green and every previous pass stays green.",
+            },
+            {
+                "id": "uplift",
+                "name": "Uplift gate",
+                "explanation": "Accept only when mean score rises; strict mode also rejects any per-model regression.",
+            },
+        ],
+        "orchestrator": {"available": False, "message": "Loop lands next release"},
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class GateDecision:
     accepted: bool
@@ -67,4 +90,3 @@ def verified_examples(body: str, cases: list[GoldenCase], outputs: dict[str, str
     if not verified:
         return base, []
     return base + "\n\n" + VERIFIED_HEADING + "\n\n" + "\n".join(verified), verified
-

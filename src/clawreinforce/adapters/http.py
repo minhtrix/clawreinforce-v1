@@ -21,7 +21,7 @@ from clawreinforce.adapters.http_verify import (
     skill_catalog,
 )
 from clawreinforce.core.arena import load_task, run_bench, task_health
-from clawreinforce.core.improve import gate_rewrite, uplift_gate
+from clawreinforce.core.improve import gate_rewrite, improve_status, uplift_gate
 from clawreinforce.core.ledger import append_event, read_events
 from clawreinforce.core.task_source import fetched_task
 from clawreinforce.errors import ClawError
@@ -133,6 +133,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                     self._json({"status": "ok", "product": "clawreinforce"})
                 elif path == "/api/skills":
                     self._json(skill_catalog(app.project_root))
+                elif path == "/api/improve/status":
+                    self._json(improve_status())
                 elif path == "/api/models":
                     self._json(app.model_catalog("refresh=1" in parsed.query))
                 elif path.startswith("/api/runs/") and path.endswith("/events"):

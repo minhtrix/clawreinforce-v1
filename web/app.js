@@ -1,5 +1,6 @@
 import { $, $$, api, errorText, setStatus } from "/ui.js";
 import { initVerify } from "/verify.js";
+import { initImprove } from "/improve.js";
 
 function showTab(name) {
   $$(".tab").forEach((button) => {
@@ -17,24 +18,7 @@ function showTab(name) {
 }
 
 $$('.tab').forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
-
-$("#rewrite-gate-button").addEventListener("click", async () => {
-  const result = $("#gate-result");
-  result.textContent = "Evaluating…";
-  try {
-    const payload = {
-      target_case: $("#target-case").value.trim(),
-      before: JSON.parse($("#before-map").value),
-      after: JSON.parse($("#after-map").value),
-    };
-    const decision = await api("/api/improve/gate", { method: "POST", body: JSON.stringify(payload) });
-    result.textContent = `${decision.accepted ? "ACCEPT" : "REJECT"} — ${decision.reason}`;
-    result.style.color = decision.accepted ? "var(--green)" : "var(--red)";
-  } catch (error) {
-    result.textContent = errorText(error);
-    result.style.color = "var(--red)";
-  }
-});
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1) || "verify"));
 
 let currentRun = null;
 let stream = null;
@@ -193,4 +177,5 @@ $("#use-arena-model").addEventListener("click", () => {
 
 showTab(location.hash.slice(1) || "verify");
 initVerify();
+initImprove();
 loadModels();
