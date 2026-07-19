@@ -32,6 +32,7 @@ button { cursor: pointer; }
 .tab.active { color: var(--text); border-bottom-color: var(--violet); }
 main { max-width: 1440px; min-height: calc(100vh - 210px); margin: 0 auto; padding: clamp(44px, 7vw, 92px) clamp(20px, 5vw, 72px); }
 .view { animation: enter .25s ease-out; }
+.view[hidden] { display: none !important; }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } }
 .hero-copy { max-width: 780px; margin-bottom: 44px; }
 .hero-copy.compact { margin-bottom: 32px; }

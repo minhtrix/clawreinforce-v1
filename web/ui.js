@@ -3,6 +3,7 @@ export const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 export async function api(path, options = {}) {
   const response = await fetch(path, {
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     ...options,
   });

@@ -146,6 +146,25 @@ def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> N
     assert fixture["models"] == ["echo", "upper-if-skilled"]
 
 
+def test_initial_model_catalog_never_calls_remote_discovery(tmp_path: Path) -> None:
+    app = AppState(tmp_path, ROOT / "web")
+
+    def unexpected(provider: str):
+        raise AssertionError(f"initial catalog tried to discover {provider}")
+
+    app.providers.discover = unexpected
+    catalog = app.model_catalog()
+    assert catalog["models"] == [
+        {"provider": "fixture", "model": "echo", "tier": "fixture:echo"},
+        {"provider": "fixture", "model": "upper-if-skilled", "tier": "fixture:upper-if-skilled"},
+    ]
+    with api_server(tmp_path) as base:
+        with urllib.request.urlopen(base + "/api/models", timeout=5) as response:
+            assert response.headers["Cache-Control"] == "no-store"
+        with urllib.request.urlopen(base + "/", timeout=5) as response:
+            assert response.headers["Cache-Control"] == "no-cache"
+
+
 def test_unknown_model_provider_error_is_structured(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         try:

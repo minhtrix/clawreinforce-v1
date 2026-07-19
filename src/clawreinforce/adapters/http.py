@@ -47,15 +47,6 @@ class AppState:
                     {"provider": "fixture", "model": model, "tier": f"fixture:{model}"}
                     for model in row["models"]
                 )
-                continue
-            if not row["configured"]:
-                continue
-            result = self.providers.discover(row["provider"])
-            if result.status == "completed" and result.output:
-                row["models"] = json.loads(result.output)
-                models.extend({"provider": row["provider"], "model": model, "tier": f"{row['provider']}:{model}"} for model in row["models"])
-            else:
-                row["last_error"] = result.error
         preset = next(
             (model["tier"] for model in models if model["tier"] == "openai:gpt-5.6-sol"),
             next((model["tier"] for model in models if model["provider"] == "ollama-cloud"), "fixture:echo"),
@@ -97,6 +88,7 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
             data = json.dumps(value, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -241,6 +233,7 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
             data = path.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream")
+            self.send_header("Cache-Control", "no-cache")
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
