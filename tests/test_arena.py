@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from clawreinforce.core.arena import load_task, run_bench, task_health
+from clawreinforce.core.arena import ArenaTask, load_task, run_bench, task_health
 from clawreinforce.core.models import ProviderResult
 from clawreinforce.core.skill import load_skill
 
@@ -40,3 +40,24 @@ def test_cancel_keeps_partial_results() -> None:
     assert report.cancelled
     assert len(report.rows) == 1
 
+
+def test_ungraded_row_explains_unsupported_container_verifier() -> None:
+    skill = load_skill(ROOT / "uppercase-skill")
+    task = ArenaTask(ROOT, "container-task", "hello", None, None, "skillsbench")
+    row = run_bench(task, skill, ["fixture:echo"], 1, _executor).rows[0]
+    assert row.status == "ungraded"
+    assert row.without_skill is None and row.with_skill is None and row.uplift is None
+    assert row.reason == "ungraded: this task ships a container verifier the light runner does not execute — use a native task"
+
+
+def test_partial_row_preserves_structured_provider_reason() -> None:
+    task = load_task(ROOT / "uppercase-task")
+    skill = load_skill(ROOT / "uppercase-skill")
+    error = {"code": "provider.key_missing", "kind": "unavailable", "message": "key missing", "context": {"provider": "openai"}}
+
+    def unavailable(tier: str, system: str, user: str) -> ProviderResult:
+        return ProviderResult("unavailable", error=error)
+
+    row = run_bench(task, skill, ["openai:gpt-5.6-sol"], 1, unavailable).rows[0]
+    assert row.status == "partial"
+    assert row.reason == error

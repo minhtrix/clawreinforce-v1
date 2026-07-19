@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
 from clawreinforce.core.arena import BenchReport
@@ -11,11 +12,14 @@ def export_csv(report: BenchReport, path: Path) -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["tier", "trial", "without_skill", "with_skill", "uplift", "status", "input_tokens", "output_tokens", "cost_usd"],
+            fieldnames=["tier", "trial", "without_skill", "with_skill", "uplift", "status", "reason", "input_tokens", "output_tokens", "cost_usd"],
         )
         writer.writeheader()
         for row in report.rows:
-            writer.writerow({name: getattr(row, name) for name in writer.fieldnames})
+            values = {name: getattr(row, name) for name in writer.fieldnames}
+            if isinstance(values["reason"], dict):
+                values["reason"] = json.dumps(values["reason"], ensure_ascii=False, separators=(",", ":"))
+            writer.writerow(values)
     return path
 
 
@@ -44,4 +48,3 @@ def export_png(report: BenchReport, path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, format="PNG")
     return path
-

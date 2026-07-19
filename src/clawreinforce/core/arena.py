@@ -34,6 +34,7 @@ class ArenaRow:
     with_skill: float | None
     uplift: float | None
     status: str
+    reason: str | dict[str, Any] | None = None
     last_error: dict[str, Any] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -123,6 +124,28 @@ def _known_sum(values: list[float | int | None]) -> float | int | None:
     return sum(value for value in values if value is not None) if values and all(value is not None for value in values) else None
 
 
+def _row_reason(
+    task: ArenaTask,
+    responses: list[ProviderResult],
+    baseline: float | None,
+    equipped: float | None,
+) -> str | dict[str, Any] | None:
+    if baseline is not None and equipped is not None:
+        return None
+    errors = [response.error for response in responses if response.error]
+    if errors:
+        return errors[-1]
+    if task.check is None and all(response.status == "completed" for response in responses):
+        return "ungraded: this task ships a container verifier the light runner does not execute — use a native task"
+    incomplete = next((response for response in responses if response.status != "completed" or response.output is None), None)
+    return {
+        "code": "provider.incomplete",
+        "kind": "unavailable",
+        "message": "provider returned no gradeable output",
+        "context": {"status": incomplete.status if incomplete else "unknown"},
+    }
+
+
 def run_bench(
     task: ArenaTask,
     skill: Skill,
@@ -154,6 +177,7 @@ def run_bench(
             equipped, skill_response = _phase(executor, tier, equipped_system, task.prompt, task.check)
             responses = [base_response, skill_response]
             errors = [response.error for response in responses if response.error]
+            reason = _row_reason(task, responses, baseline, equipped)
             row = ArenaRow(
                 tier,
                 trial,
@@ -161,6 +185,7 @@ def run_bench(
                 equipped,
                 equipped - baseline if equipped is not None and baseline is not None else None,
                 "ungraded" if task.check is None and all(response.status == "completed" for response in responses) else ("completed" if baseline is not None and equipped is not None else "partial"),
+                reason,
                 errors[-1] if errors else None,
                 _known_sum([response.input_tokens for response in responses]),
                 _known_sum([response.output_tokens for response in responses]),

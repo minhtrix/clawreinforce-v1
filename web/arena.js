@@ -10,10 +10,29 @@ function score(value, signed = false) {
 }
 
 
+function reasonText(row) {
+  const reason = row.reason || row.last_error;
+  if (!reason) return "";
+  return typeof reason === "string" ? reason : JSON.stringify(reason);
+}
+
+
+function renderReason(row, reason) {
+  if (!reason) return;
+  const empty = $("#arena-row-reasons .empty-state");
+  if (empty) empty.remove();
+  const line = document.createElement("p");
+  line.className = "arena-reason-line";
+  line.textContent = `${row.tier} · trial ${row.trial}: ${reason}`;
+  $("#arena-row-reasons").appendChild(line);
+}
+
+
 function renderRow(row) {
   const empty = $("#arena-rows .empty");
   if (empty) empty.parentElement.remove();
   const tableRow = document.createElement("tr");
+  const reason = reasonText(row);
   const values = [
     row.tier,
     row.trial,
@@ -25,11 +44,22 @@ function renderRow(row) {
   ];
   values.forEach((value, index) => {
     const cell = document.createElement("td");
-    cell.textContent = value;
+    if (index === 5 && reason) {
+      cell.title = reason;
+      const status = document.createElement("strong");
+      status.textContent = value;
+      const detail = document.createElement("small");
+      detail.textContent = reason;
+      cell.className = "arena-row-status";
+      cell.append(status, detail);
+    } else {
+      cell.textContent = value;
+    }
     if (index === 6 && row.last_error) cell.className = "table-error";
     tableRow.appendChild(cell);
   });
   $("#arena-rows").appendChild(tableRow);
+  renderReason(row, reason);
 }
 
 
@@ -105,6 +135,7 @@ async function start() {
   if (stream) stream.close();
   clearError($("#arena-error"));
   setDownloads("", false);
+  $("#arena-row-reasons").innerHTML = '<p class="empty-state">Reasons for ungraded or partial rows will appear here as trials complete.</p>';
   $("#arena-rows").innerHTML = '<tr><td colspan="7" class="empty">Run accepted. Waiting for the first streamed trial…</td></tr>';
   setStatus($("#arena-status"), "RUNNING", "warn");
   $("#bench-button").disabled = true;
