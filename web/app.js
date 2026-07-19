@@ -1,25 +1,5 @@
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => [...document.querySelectorAll(selector)];
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const data = await response.json();
-  if (!response.ok || data.error) throw data.error || new Error(`HTTP ${response.status}`);
-  return data;
-}
-
-function errorText(error) {
-  if (typeof error === "string") return error;
-  return `${error.code || "error"}: ${error.message || JSON.stringify(error)}`;
-}
-
-function setStatus(element, text, tone = "neutral") {
-  element.textContent = text;
-  element.className = `status ${tone}`;
-}
+import { $, $$, api, errorText, setStatus } from "/ui.js";
+import { initVerify } from "/verify.js";
 
 function showTab(name) {
   $$(".tab").forEach((button) => {
@@ -37,27 +17,6 @@ function showTab(name) {
 }
 
 $$('.tab').forEach((button) => button.addEventListener("click", () => showTab(button.dataset.tab)));
-
-async function runVerify(mode) {
-  const status = $("#verify-status");
-  const output = $("#verify-output");
-  setStatus(status, "RUNNING", "warn");
-  output.textContent = "Inspecting source…";
-  try {
-    const source = $("#verify-source").value.trim();
-    const body = mode === "scan" ? { path: source } : { source, tiers: [$("#verify-tier").value.trim()] };
-    const result = await api(`/api/${mode}`, { method: "POST", body: JSON.stringify(body) });
-    output.textContent = JSON.stringify(result, null, 2);
-    const verdict = result.verdict || (result.findings.length ? "review" : "clean");
-    setStatus(status, verdict.toUpperCase(), verdict === "install" || verdict === "clean" ? "good" : verdict === "reject" ? "bad" : "warn");
-  } catch (error) {
-    output.textContent = errorText(error);
-    setStatus(status, "ERROR", "bad");
-  }
-}
-
-$("#scan-button").addEventListener("click", () => runVerify("scan"));
-$("#guard-button").addEventListener("click", () => runVerify("guard"));
 
 $("#rewrite-gate-button").addEventListener("click", async () => {
   const result = $("#gate-result");
@@ -233,4 +192,5 @@ $("#use-arena-model").addEventListener("click", () => {
 });
 
 showTab(location.hash.slice(1) || "verify");
+initVerify();
 loadModels();

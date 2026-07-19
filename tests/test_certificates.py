@@ -23,3 +23,8 @@ def test_certificate_detects_tamper() -> None:
     tampered["body"]["tiers"][0]["pass_rate"] = 0.0
     assert not verify_certificate(tampered)[0]
 
+
+def test_certificate_survives_javascript_integral_float_roundtrip() -> None:
+    certificate = issue_certificate(_report(), Ed25519PrivateKey.generate())
+    certificate["body"]["tiers"][0]["pass_rate"] = 1
+    assert verify_certificate(certificate) == (True, "valid")

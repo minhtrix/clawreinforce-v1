@@ -15,7 +15,18 @@ from clawreinforce.core.models import CertificationReport
 
 
 def _canonical(value: dict[str, Any]) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return json.dumps(_normalize_numbers(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def _normalize_numbers(value: Any) -> Any:
+    """Keep signatures stable when JavaScript serializes 1.0 as 1."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {key: _normalize_numbers(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_numbers(item) for item in value]
+    return value
 
 
 def load_or_create_key(root: Path) -> Ed25519PrivateKey:

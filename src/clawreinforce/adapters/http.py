@@ -5,7 +5,6 @@ import mimetypes
 import threading
 import time
 import uuid
-from dataclasses import asdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,13 +13,16 @@ from urllib.parse import urlparse
 
 from clawreinforce.adapters.providers import ProviderHub
 from clawreinforce.adapters.run_broker import RunBroker, RunState
+from clawreinforce.adapters.http_verify import (
+    certify_source,
+    check_certificate,
+    guard_source,
+    scan_source,
+    skill_catalog,
+)
 from clawreinforce.core.arena import load_task, run_bench, task_health
-from clawreinforce.core.fetch import fetched_skill
-from clawreinforce.core.guard import guard_skill
 from clawreinforce.core.improve import gate_rewrite, uplift_gate
 from clawreinforce.core.ledger import append_event, read_events
-from clawreinforce.core.scan import scan_skill
-from clawreinforce.core.skill import load_skill
 from clawreinforce.core.task_source import fetched_task
 from clawreinforce.errors import ClawError
 
@@ -40,7 +42,14 @@ class AppState:
         models: list[dict[str, str]] = []
         for row in providers:
             row["models"] = []
-            if row["provider"] == "fixture" or not row["configured"]:
+            if row["provider"] == "fixture":
+                row["models"] = ["echo", "upper-if-skilled"]
+                models.extend(
+                    {"provider": "fixture", "model": model, "tier": f"fixture:{model}"}
+                    for model in row["models"]
+                )
+                continue
+            if not row["configured"]:
                 continue
             result = self.providers.discover(row["provider"])
             if result.status == "completed" and result.output:
@@ -122,6 +131,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
             try:
                 if path == "/api/health":
                     self._json({"status": "ok", "product": "clawreinforce"})
+                elif path == "/api/skills":
+                    self._json(skill_catalog(app.project_root))
                 elif path == "/api/models":
                     self._json(app.model_catalog("refresh=1" in parsed.query))
                 elif path.startswith("/api/runs/") and path.endswith("/events"):
@@ -139,14 +150,29 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
             try:
                 payload = self._body()
                 if path == "/api/scan":
-                    with fetched_skill(str(payload["path"])) as fetched:
-                        skill = load_skill(fetched)
-                        self._json({"skill": skill.name, "findings": [asdict(row) for row in scan_skill(skill)]})
+                    self._json(scan_source(app.project_root, str(payload.get("path", ""))))
+                elif path == "/api/certify":
+                    self._json(
+                        certify_source(
+                            app.project_root,
+                            str(payload.get("source", "")),
+                            list(payload.get("tiers") or []),
+                            int(payload.get("samples", 1)),
+                            app.providers.execute,
+                        )
+                    )
+                elif path == "/api/certificates/verify":
+                    self._json(check_certificate(payload))
                 elif path == "/api/guard":
-                    with fetched_skill(str(payload["source"])) as fetched:
-                        skill = load_skill(fetched)
-                        result = guard_skill(skill, list(payload.get("tiers") or ["openai:gpt-5.6-sol"]), int(payload.get("samples", 1)), app.providers.execute)
-                        self._json({"skill": skill.name, **result})
+                    self._json(
+                        guard_source(
+                            app.project_root,
+                            str(payload.get("source", "")),
+                            list(payload.get("tiers") or ["openai:gpt-5.6-sol"]),
+                            int(payload.get("samples", 1)),
+                            app.providers.execute,
+                        )
+                    )
                 elif path == "/api/bench":
                     state = app.start_bench(payload)
                     self._json({"run_id": state.run_id}, HTTPStatus.ACCEPTED)

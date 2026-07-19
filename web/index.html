@@ -30,21 +30,62 @@
         <h1 id="verify-title">Turn an unknown skill into a deterministic decision.</h1>
         <p>Fetch once. Inspect the bytes. Run declared cases. Keep missing coverage honest.</p>
       </div>
-      <div class="workbench">
-        <div class="form-stack">
-          <label for="verify-source">ClawHub or GitHub skill URL</label>
-          <input id="verify-source" value="https://clawhub.ai/jaaneek/skills/x-search" autocomplete="off">
+      <div class="verify-grid">
+        <section class="panel form-stack" aria-label="Certification controls">
+          <label for="verify-skill">Skill from the API</label>
+          <select id="verify-skill"><option value="">Loading example skills…</option></select>
+          <label for="verify-source">Skill path, GitHub URL, or ClawHub slug</label>
+          <input id="verify-source" autocomplete="off" placeholder="examples/uppercase-skill or owner/skills/slug">
           <label for="verify-tier">Certification tier</label>
-          <input id="verify-tier" value="ollama-cloud:" autocomplete="off">
+          <select id="verify-tier"><option value="">Loading model tiers…</option></select>
+          <label for="verify-samples">Samples per golden case</label>
+          <input id="verify-samples" type="number" min="1" max="20" value="1">
           <div class="actions">
-            <button class="secondary" id="scan-button">Static scan</button>
-            <button class="primary" id="guard-button">Run guard</button>
+            <button class="secondary" id="scan-button">Scan skill</button>
+            <button class="primary" id="certify-button">Certify skill</button>
           </div>
+          <pre class="structured-error" id="verify-error" hidden></pre>
+        </section>
+
+        <section class="result-shell" aria-live="polite">
+          <div class="result-heading"><span>Verification evidence</span><span class="status neutral" id="verify-status">READY</span></div>
+          <div class="evidence-section">
+            <h2>Findings</h2>
+            <ul class="finding-list" id="finding-list"><li class="empty-state">Choose a skill, then scan or certify it.</li></ul>
+          </div>
+          <div class="evidence-section">
+            <h2>Tier coverage</h2>
+            <table>
+              <thead><tr><th>Tier</th><th>Status</th><th>Coverage</th><th>Pass rate</th></tr></thead>
+              <tbody id="tier-results"><tr><td colspan="4" class="empty-state">Certify a skill to measure declared cases.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="certificate-card" id="certificate-card">
+            <div><small>SIGNED CERTIFICATE</small><strong id="certificate-skill">No certificate yet</strong></div>
+            <code id="certificate-fingerprint">Certify a skill to create fingerprint-bound evidence.</code>
+            <button class="secondary" id="check-signature" disabled>Check signature</button>
+            <span class="signature-state" id="signature-state">Waiting for a certificate.</span>
+            <div class="badge-preview" id="badge-preview">The verification badge appears after scored coverage.</div>
+          </div>
+        </section>
+      </div>
+
+      <section class="guard-panel" aria-labelledby="guard-title">
+        <div>
+          <p class="eyebrow">INSTALLATION GUARD</p>
+          <h2 id="guard-title">Path, GitHub URL, or ClawHub slug → one honest verdict.</h2>
+          <p>Install means clean and fully covered. Review preserves uncertainty. Reject identifies a blocking reason.</p>
         </div>
-        <div class="result-shell" aria-live="polite">
-          <div class="result-heading"><span>Decision record</span><span class="status neutral" id="verify-status">READY</span></div>
-          <pre id="verify-output">Waiting for a skill.</pre>
+        <div class="guard-controls">
+          <input id="guard-source" autocomplete="off" placeholder="examples/uppercase-skill, GitHub URL, or ClawHub slug">
+          <button class="primary" id="guard-button">Run guard</button>
         </div>
+        <article class="verdict-card neutral" id="guard-verdict" aria-live="polite">
+          <strong id="guard-verdict-label">NO VERDICT</strong>
+          <ul id="guard-reasons"><li>Enter a source and run the guard before installing it.</li></ul>
+          <pre class="structured-error" id="guard-error" hidden></pre>
+        </article>
+      </section>
       </div>
     </section>
 
@@ -126,6 +167,6 @@
   </main>
 
   <footer><span>CORE → CLI + HTTP → WEB</span><span>signed, fingerprint-bound, coverage-aware</span></footer>
-  <script src="/app.js" defer></script>
+  <script src="/app.js" type="module"></script>
 </body>
 </html>
