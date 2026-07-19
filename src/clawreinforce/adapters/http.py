@@ -56,7 +56,10 @@ class AppState:
                 models.extend({"provider": row["provider"], "model": model, "tier": f"{row['provider']}:{model}"} for model in row["models"])
             else:
                 row["last_error"] = result.error
-        preset = next((model["tier"] for model in models if model["provider"] == "ollama-cloud"), "fixture:echo")
+        preset = next(
+            (model["tier"] for model in models if model["tier"] == "openai:gpt-5.6-sol"),
+            next((model["tier"] for model in models if model["provider"] == "ollama-cloud"), "fixture:echo"),
+        )
         payload = {"providers": providers, "models": models, "preset": preset}
         self._model_cache = (time.monotonic(), payload)
         return payload

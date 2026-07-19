@@ -136,6 +136,12 @@ def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> N
         "key_source": "built_in",
         "last_error": None,
     }
+    openai = next(row for row in result["providers"] if row["provider"] == "openai")
+    assert {key: openai[key] for key in ("configured", "key_source", "state")} == {
+        "configured": False,
+        "key_source": "none",
+        "state": "key_missing",
+    }
     assert result["discovery"] == {"provider": "fixture", "status": "completed", "error": None}
     assert fixture["models"] == ["echo", "upper-if-skilled"]
 

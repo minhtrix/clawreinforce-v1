@@ -49,17 +49,19 @@ class ProviderHub:
             settings = self._settings(name)
             if not settings.get("enabled", True):
                 continue
+            configured = bool(settings.get("api_key")) or not settings.get("requires_key", False)
             rows.append(
                 {
                     "provider": name,
                     "base_url": settings.get("base_url"),
                     "key_source": settings["key_source"],
-                    "configured": bool(settings.get("api_key")) or not settings.get("requires_key", False),
+                    "configured": configured,
+                    "state": "ready" if configured else "key_missing",
                     "last_error": None,
                 }
             )
         rows.append(
-            {"provider": "fixture", "base_url": None, "key_source": "built_in", "configured": True, "last_error": None}
+            {"provider": "fixture", "base_url": None, "key_source": "built_in", "configured": True, "state": "ready", "last_error": None}
         )
         return rows
 

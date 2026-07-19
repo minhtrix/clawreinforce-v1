@@ -37,6 +37,16 @@ class CompatibleHub(ProviderHub):
         }
 
 
+class OpenAIHub(ProviderHub):
+    def __init__(self, project_root: Path) -> None:
+        super().__init__(project_root)
+        self.request: tuple[str, str, Any, dict[str, str]] | None = None
+
+    def _request(self, method: str, url: str, payload: Any, headers: dict[str, str]) -> dict[str, Any]:
+        self.request = (method, url, payload, headers)
+        return {"output_text": "OPENAI_OK", "usage": {"input_tokens": 4, "output_tokens": 1}}
+
+
 def _config(root: Path) -> None:
     store = root / ".clawreinforce"
     store.mkdir()
@@ -93,3 +103,27 @@ def test_compatible_provider_retries_once_with_completion_key(tmp_path: Path) ->
     assert "max_tokens" in hub.payloads[0]
     assert "max_tokens" not in hub.payloads[1]
     assert hub.payloads[1]["max_completion_tokens"] == 4096
+
+
+def test_default_registry_exposes_ready_and_key_missing_states(tmp_path: Path, monkeypatch) -> None:
+    for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OLLAMA_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    rows = {row["provider"]: row for row in ProviderHub(tmp_path).status()}
+    assert set(rows) == {"openai", "anthropic", "ollama", "ollama-cloud", "fixture"}
+    assert rows["openai"]["key_source"] == "none"
+    assert rows["openai"]["state"] == "key_missing"
+    assert rows["anthropic"]["state"] == "key_missing"
+    assert rows["ollama"]["state"] == "ready"
+
+
+def test_default_openai_tier_uses_responses_api_when_key_is_set(tmp_path: Path) -> None:
+    store = tmp_path / ".clawreinforce"
+    store.mkdir()
+    (store / "providers.json").write_text(json.dumps({"openai": {"api_key": "test-key"}}), encoding="utf-8")
+    hub = OpenAIHub(tmp_path)
+    result = hub.execute("openai:gpt-5.6-sol", "system", "user")
+    assert result.output == "OPENAI_OK"
+    assert hub.request is not None
+    assert hub.request[1] == "https://api.openai.com/v1/responses"
+    assert hub.request[2]["model"] == "gpt-5.6-sol"
+    assert hub.request[3]["Authorization"] == "Bearer test-key"

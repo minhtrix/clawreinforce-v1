@@ -97,7 +97,8 @@ function providerRow(provider) {
   base.textContent = provider.base_url || "built-in deterministic fixture";
   name.append(strong, base);
   const configured = document.createElement("td");
-  configured.textContent = provider.configured ? "yes" : "no";
+  configured.textContent = provider.configured ? "ready" : "key missing";
+  configured.title = provider.configured ? "Provider is ready to call." : "Set the provider environment variable or add an api_key to the ignored providers.json file.";
   configured.className = provider.configured ? "good-text" : "warn-text";
   const key = document.createElement("td");
   key.textContent = provider.key_source;
