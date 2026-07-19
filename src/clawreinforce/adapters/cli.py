@@ -179,7 +179,14 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="clawreinforce", description="CI for agent skills")
+    parser = argparse.ArgumentParser(
+        prog="clawreinforce",
+        description="CI for agent skills",
+        epilog=(
+            "Check kinds: equals, contains, not_contains, regex, property, exec, task, "
+            "and agent. The agent check is single-shot (no tool loop yet)."
+        ),
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     scan = commands.add_parser("scan", help="statically inspect a skill")
     scan.add_argument("path")

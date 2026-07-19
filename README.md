@@ -77,6 +77,8 @@ Native `task.json` tasks use clawreinforce's deterministic checks and produce sc
 
 Many SkillsBench tasks also require files, GUI actions, or a sandboxed agent runtime. A plain cloud chat completion proves provider connectivity, not full task completion. Integrating the official SkillsBench execution environment is the next production milestone.
 
+The `agent` check kind is **single-shot (no tool loop yet)**. It grades one emitted artifact map with the same hidden-grader path as `task`; it does not run an iterative agent or tool-calling loop.
+
 ## Useful commands
 
 ```powershell
@@ -108,4 +110,3 @@ Security properties include ZIP path validation, temporary remote-source staging
 3. Paste the ClawHub X Search URL and run Guard.
 4. Switch Arena between Easy, Medium, and Hard SkillsBench links.
 5. Show that external verifier coverage is `ungraded`, then run the local uppercase fixture to demonstrate measurable `+1.00` uplift and SSE progress.
-

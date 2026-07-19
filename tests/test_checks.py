@@ -25,8 +25,14 @@ def test_task_author_grader_overrides_emitted_files() -> None:
     assert result.passed
 
 
+def test_agent_check_is_explicitly_single_shot() -> None:
+    grader = "from pathlib import Path\nassert Path('answer.txt').read_text() == '42'\n"
+    result = run_check(CheckSpec("agent", options={"grader": grader}), json.dumps({"answer.txt": "42"}))
+    assert result.passed
+    assert "single-shot (no tool loop yet)" in result.message
+
+
 def test_dry_run_never_executes_code() -> None:
     result = run_check(CheckSpec("exec"), "raise RuntimeError('must not run')", dry_run=True)
     assert not result.passed
     assert "not executed" in result.message
-

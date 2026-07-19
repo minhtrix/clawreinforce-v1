@@ -133,6 +133,13 @@ def run_check(spec: CheckSpec, output: str, *, dry_run: bool = False) -> CheckRe
     if spec.kind == "exec":
         return _exec_check(spec, output, start)
     if spec.kind in {"task", "agent"}:
-        return _task_check(spec, output, start)
+        result = _task_check(spec, output, start)
+        if spec.kind == "agent":
+            return CheckResult(
+                result.passed,
+                result.kind,
+                f"single-shot (no tool loop yet): {result.message}",
+                result.duration_ms,
+            )
+        return result
     return _result(start, False, spec.kind, f"unsupported check kind: {spec.kind}")
-
