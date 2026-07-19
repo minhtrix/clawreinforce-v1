@@ -90,6 +90,8 @@ class ProviderHub:
             return _error("provider.request_failed", "unavailable", str(exc), provider=provider, model=model)
 
     def discover(self, provider: str) -> ProviderResult:
+        if provider == "fixture":
+            return ProviderResult("completed", output=json.dumps(["echo", "upper-if-skilled"]))
         settings = self._settings(provider)
         kind = str(settings.get("kind", provider))
         if not settings.get("enabled", True):

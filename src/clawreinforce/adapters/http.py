@@ -60,6 +60,22 @@ class AppState:
         self._model_cache = (time.monotonic(), payload)
         return payload
 
+    def discover_provider(self, provider: str) -> dict[str, Any]:
+        catalog = self.model_catalog()
+        row = next((item for item in catalog["providers"] if item["provider"] == provider), None)
+        if row is None:
+            raise ClawError("provider.unknown", "validation", f"unknown provider: {provider}", provider=provider)
+        result = self.providers.discover(provider)
+        discovered = json.loads(result.output) if result.status == "completed" and result.output else []
+        row["models"] = discovered
+        row["last_error"] = result.error
+        catalog["models"] = [item for item in catalog["models"] if item["provider"] != provider]
+        catalog["models"].extend(
+            {"provider": provider, "model": model, "tier": f"{provider}:{model}"}
+            for model in discovered
+        )
+        return {"discovery": {"provider": provider, "status": result.status, "error": result.error}, **catalog}
+
 def _error(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, ClawError):
         return exc.detail.to_dict()
@@ -149,6 +165,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                             app.providers.execute,
                         )
                     )
+                elif path == "/api/models/discover":
+                    self._json(app.discover_provider(str(payload.get("provider", ""))))
                 elif path == "/api/bench":
                     state = app.bench.start(payload, "fixture:echo")
                     self._json({"run_id": state.run_id}, HTTPStatus.ACCEPTED)

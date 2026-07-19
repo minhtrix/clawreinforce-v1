@@ -154,19 +154,26 @@
     <section class="view" id="models" aria-labelledby="models-title" hidden>
       <div class="hero-copy compact">
         <p class="eyebrow">PROVIDER HUB</p>
-        <h1 id="models-title">One readable registry, even at 100+ models.</h1>
+        <h1 id="models-title">Every provider exposes what is configured—and what failed.</h1>
+        <p>The catalog loads discovered models automatically. Use a row’s Discover action to refresh only that provider.</p>
       </div>
       <div class="model-toolbar">
         <input id="model-filter" type="search" placeholder="Filter providers or models">
-        <button class="secondary" id="refresh-models">Refresh cloud models</button>
       </div>
       <div class="model-picker">
-        <label for="model-select">Available Ollama Cloud models</label>
-        <select id="model-select"><option>Loading cloud models…</option></select>
+        <label for="model-select">Discovered model tiers</label>
+        <select id="model-select"><option value="">Loading provider catalog…</option></select>
         <button class="secondary" id="use-verify-model">Use in Verify</button>
         <button class="secondary" id="use-arena-model">Use in Arena</button>
       </div>
-      <div class="provider-grid" id="provider-grid" aria-live="polite"></div>
+      <pre class="structured-error" id="models-error" hidden></pre>
+      <div class="provider-table-shell" aria-live="polite">
+        <div class="result-heading"><span>Provider registry</span><span class="status neutral" id="models-status">LOADING</span></div>
+        <table>
+          <thead><tr><th>Provider</th><th>Configured</th><th>Key source</th><th>Models</th><th>Last error</th><th>Action</th></tr></thead>
+          <tbody id="provider-rows"><tr><td colspan="6" class="empty">Loading provider status from the API…</td></tr></tbody>
+        </table>
+      </div>
     </section>
   </main>
 

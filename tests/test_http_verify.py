@@ -94,3 +94,28 @@ def test_improve_http_status_is_honest_about_missing_orchestrator(tmp_path: Path
     assert status["status"] == "gates_ready"
     assert [gate["id"] for gate in status["gates"]] == ["rewrite", "uplift"]
     assert status["orchestrator"] == {"available": False, "message": "Loop lands next release"}
+
+
+def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        result = request(base, "/api/models/discover", {"provider": "fixture"})
+    fixture = next(row for row in result["providers"] if row["provider"] == "fixture")
+    assert {key: fixture[key] for key in ("configured", "key_source", "last_error")} == {
+        "configured": True,
+        "key_source": "built_in",
+        "last_error": None,
+    }
+    assert result["discovery"] == {"provider": "fixture", "status": "completed", "error": None}
+    assert fixture["models"] == ["echo", "upper-if-skilled"]
+
+
+def test_unknown_model_provider_error_is_structured(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        try:
+            request(base, "/api/models/discover", {"provider": "does-not-exist"})
+        except urllib.error.HTTPError as exc:
+            error = json.loads(exc.read())["error"]
+        else:
+            raise AssertionError("request should fail")
+    assert error["code"] == "provider.unknown"
+    assert error["context"] == {"provider": "does-not-exist"}
