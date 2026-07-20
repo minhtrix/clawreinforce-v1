@@ -187,6 +187,7 @@ function renderModelPickers(models, preferred = "") {
     },
   });
   $("#improve-selection-note").textContent = `Author: ${authorTier || "none"} · ${selectedGateTiers.size} gate model(s) · calls scale with models × cases × proposals.`;
+  setStatus($("#improve-model-status"), authorTier && selectedGateTiers.size ? `${1 + selectedGateTiers.size} ROLES SET` : "CHOOSE MODELS", authorTier && selectedGateTiers.size ? "good" : "warn");
   window.dispatchEvent(new CustomEvent("clawreinforce:improve-selection"));
 }
 

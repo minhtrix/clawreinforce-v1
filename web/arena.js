@@ -20,6 +20,7 @@ function renderModels(preferred = "") {
     onChange: (next) => { selectedTiers = next; renderModels(); },
   });
   $("#arena-selection-note").textContent = `${selectedTiers.size} model(s) selected · ${$("#arena-trials").value} trial(s) per model.`;
+  setStatus($("#arena-model-status"), selectedTiers.size ? `${selectedTiers.size} SELECTED` : "CHOOSE MODELS", selectedTiers.size ? "good" : "warn");
 }
 
 

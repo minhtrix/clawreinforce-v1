@@ -97,19 +97,24 @@
         <h1 id="improve-title">The model proposes. Deterministic checks decide.</h1>
         <p>Grade every golden case, rewrite only around measured failures, and keep a candidate only when its target turns green with zero regressions.</p>
       </div>
+      <section class="workflow-model-panel" aria-labelledby="improve-model-title">
+        <div class="result-heading"><span id="improve-model-title">1 · Select model roles</span><span class="status neutral" id="improve-model-status">LOADING</span></div>
+        <p class="workflow-model-intro">The <strong>Author / Breaker</strong> proposes one candidate. Every selected <strong>Gate model</strong> independently re-runs every golden case and can reject it.</p>
+        <label for="improve-model-filter">Filter the available provider catalog</label>
+        <input id="improve-model-filter" type="search" placeholder="Filter providers or models">
+        <div class="model-role-grid">
+          <div class="model-role-card"><span class="model-role-label">AUTHOR / BREAKER · choose exactly one</span><p>Creates rewrites and adversarial trap candidates. Its opinion never decides acceptance.</p><div id="improve-author-tiers" class="model-choice-groups"><p class="empty-state">Loading author models…</p></div></div>
+          <div class="model-role-card"><span class="model-role-label">GATE / FOCUS · choose one or more</span><p>Measures baseline and candidate. A rewrite survives only when its target turns green with zero regressions.</p><div id="improve-gate-tiers" class="model-choice-groups"><p class="empty-state">Loading gate models…</p></div></div>
+        </div>
+        <small id="improve-selection-note">Choose one author and at least one gate model.</small>
+      </section>
       <div class="improve-grid">
         <section class="panel form-stack" aria-label="Improve controls">
+          <h2>2 · Configure the run</h2>
           <label for="improve-skill">Skill from the API</label>
           <select id="improve-skill"><option value="">Loading project skills…</option></select>
           <label for="improve-source">Skill source <small>rewrite requires local; traps also accept GitHub URLs and ClawHub slugs</small></label>
           <input id="improve-source" autocomplete="off" placeholder="examples/improvable-uppercase-skill or owner/skills/slug">
-          <label for="improve-model-filter">Author + gate models <small>one author proposes; every gate model independently checks it</small></label>
-          <input id="improve-model-filter" type="search" placeholder="Filter providers or models">
-          <span class="model-role-label">AUTHOR / BREAKER · choose one</span>
-          <div id="improve-author-tiers" class="model-choice-groups compact"><p class="empty-state">Loading author models…</p></div>
-          <span class="model-role-label">GATE · choose one or more</span>
-          <div id="improve-gate-tiers" class="model-choice-groups compact"><p class="empty-state">Loading gate models…</p></div>
-          <small id="improve-selection-note">Choose at least one gate model. Calls scale with models × cases × proposals.</small>
           <label for="improve-strategy">Rewrite strategy</label>
           <select id="improve-strategy"><option value="instruct">instruct — rewrite rules</option><option value="fewshot">fewshot — verify examples</option></select>
           <label for="improve-max">Maximum rewrites</label>
@@ -122,7 +127,7 @@
           <pre class="structured-error" id="improve-error" hidden></pre>
         </section>
         <section class="result-shell" aria-live="polite">
-          <div class="result-heading"><span>Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
+          <div class="result-heading"><span>3 · Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
           <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, one author, gate models, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-run-context"></small><small id="improve-apply-state"></small><small id="improve-measurement-note"></small></div>
           <div class="evidence-section">
             <h2>Loop phases</h2>
@@ -187,17 +192,18 @@
         <h1 id="arena-title">Same task. Same model. Skill off, then on.</h1>
         <p>Rows arrive from the live server stream. Local fixture sources are graded; external SkillsBench verifiers remain explicitly ungraded.</p>
       </div>
+      <section class="workflow-model-panel" aria-labelledby="arena-model-title">
+        <div class="result-heading"><span id="arena-model-title">1 · Select executor models</span><span class="status neutral" id="arena-model-status">LOADING</span></div>
+        <p class="workflow-model-intro">Every selected model runs the same task without and with the skill. This makes uplift comparable per model instead of hiding it behind one default tier.</p>
+        <label for="arena-model-filter">Filter the available provider catalog</label><input id="arena-model-filter" type="search" placeholder="Filter providers or models">
+        <div id="arena-tiers" class="model-choice-groups"><p class="empty-state">Loading model tiers…</p></div>
+        <small id="arena-selection-note">Choose at least one model. Trials apply to every selection.</small>
+      </section>
       <div class="arena-controls">
         <label>Task from the API<select id="arena-task-picker"><option value="">Loading tasks…</option></select></label>
         <label>Task path or URL<input id="arena-task" placeholder="examples/uppercase-task or SkillsBench URL"></label>
         <label>Skill from the API<select id="arena-skill-picker"><option value="">Loading skills…</option></select></label>
         <label>Skill path, GitHub URL, or ClawHub slug<input id="arena-skill" placeholder="examples/uppercase-skill or ClawHub slug"></label>
-        <div class="arena-model-control">
-          <label for="arena-model-filter">Models <small>same task and skill, independently measured per selected model</small></label>
-          <input id="arena-model-filter" type="search" placeholder="Filter providers or models">
-          <div id="arena-tiers" class="model-choice-groups compact"><p class="empty-state">Loading model tiers…</p></div>
-          <small id="arena-selection-note">Choose at least one model. Trials apply to each selection.</small>
-        </div>
         <label>Trials<input id="arena-trials" type="number" min="1" max="20" value="2"></label>
         <div class="arena-actions">
           <button class="primary" id="bench-button">Start benchmark</button>
