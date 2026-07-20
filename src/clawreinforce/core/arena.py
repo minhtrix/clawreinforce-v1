@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from clawreinforce.core.checks import run_check
+from clawreinforce.core.arena_summary import summarize_arena
 from clawreinforce.core.fingerprint import skill_fingerprint
 from clawreinforce.core.models import CheckSpec, ProviderResult, Skill
 from clawreinforce.core.skill import parse_frontmatter
@@ -196,17 +197,12 @@ def run_bench(
             emit({"type": "progress", "run_id": run_id, "completed": len(rows), "total": total})
         if cancelled:
             break
-    before = [row.without_skill for row in rows if row.without_skill is not None]
-    after = [row.with_skill for row in rows if row.with_skill is not None]
-    summary = {
-        "without_skill": sum(before) / len(before) if before else None,
-        "with_skill": sum(after) / len(after) if after else None,
-        "uplift": (sum(after) / len(after) - sum(before) / len(before)) if before and after else None,
-        "coverage": {"completed_rows": sum(row.status == "completed" for row in rows), "expected_rows": total},
+    summary = summarize_arena(rows, tiers, trials)
+    summary.update({
         "input_tokens": _known_sum([row.input_tokens for row in rows]),
         "output_tokens": _known_sum([row.output_tokens for row in rows]),
         "cost_usd": _known_sum([row.cost_usd for row in rows]),
-    }
+    })
     report = BenchReport(run_id, datetime.now(timezone.utc).isoformat(), task.name, skill.name, skill_fingerprint(skill.root), rows, summary, cancelled)
     emit({"type": "run_cancelled" if cancelled else "run_completed", "run_id": run_id, "report": report.to_dict()})
     return report

@@ -1,5 +1,6 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
 import { loadHistory } from "/arena_history.js";
+import { renderArenaInsights, resetArenaInsights } from "/arena-results.js";
 import { loadModelCatalog } from "/model-catalog.js";
 import { renderModelChoices, selectionSummary } from "/model-picker.js";
 
@@ -16,7 +17,7 @@ function renderModels(preferred = "") {
   }
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
-  if (!selectedTiers.size && modelCatalog.length) {
+  if (!selectedTiers.size && modelCatalog.length && !modelSelectionTouched) {
     selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
   }
   renderModelChoices($("#arena-tiers"), modelCatalog, selectedTiers, {
@@ -137,6 +138,7 @@ function setDownloads(runId, enabled) {
 
 function finish(type, report) {
   renderSummary(report);
+  renderArenaInsights(report.summary);
   const complete = type === "run_completed";
   setStatus($("#arena-status"), complete ? "COMPLETE" : "CANCELLED", complete ? "good" : "warn");
   $("#bench-button").disabled = false;
@@ -199,6 +201,7 @@ function listen(runId) {
 async function start() {
   if (stream) stream.close();
   clearError($("#arena-error"));
+  resetArenaInsights();
   setDownloads("", false);
   $("#arena-live-feed").innerHTML = '<li class="empty-state">Run accepted. Connecting to the live event stream…</li>';
   $("#arena-usage").textContent = "Measuring token and cost totals; unavailable provider telemetry will stay unknown.";

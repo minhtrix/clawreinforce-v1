@@ -13,7 +13,7 @@ function renderModels(preferred = "") {
   }
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
-  if (!selectedTiers.size && modelCatalog.length) {
+  if (!selectedTiers.size && modelCatalog.length && !modelSelectionTouched) {
     selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
   }
   renderModelChoices($("#verify-tiers"), modelCatalog, selectedTiers, {

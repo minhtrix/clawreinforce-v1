@@ -45,7 +45,9 @@ $ clawreinforce improve examples/improvable-uppercase-skill --tier fixture:upper
 $ clawreinforce serve --project . --host 127.0.0.1 --port 8788
 ```
 
-Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Every workflow uses the same filterable, provider-grouped model picker; Verify and Arena accept multiple models, while Improve separates one Author / Breaker from any number of Gate models. Long Arena runs stream rows and progress over Server-Sent Events.
+Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Configured remote providers are discovered once on load, so their real LLMs appear as provider-grouped click targets without typing; bulk-select handles large catalogs. Deterministic fixtures remain available in a separate **not LLMs** group. Verify and Arena accept multiple LLMs, while Improve separates one Author / Breaker from any number of Gate models.
+
+Long Arena runs stream raw trials over Server-Sent Events, then aggregate them per LLM into **without skill → with skill → uplift** lines. The summary counts improved, regressed, and fully solving models and reports Pass@1, Pass@k, Pass^k, a Wilson 95% interval, tokens, and cost when providers expose them.
 
 ## How Codex was used
 

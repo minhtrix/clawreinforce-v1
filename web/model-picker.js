@@ -61,6 +61,27 @@ export function renderModelChoices(container, models, selected, options = {}) {
       : `${provider} · ${rows.length} LLM${rows.length === 1 ? "" : "S"} · ${selectedCount} selected`;
     choices.className = "model-choice-list";
     group.append(summary, choices);
+    if (multiple) {
+      const actions = document.createElement("div");
+      actions.className = "model-group-actions";
+      const selectAll = document.createElement("button");
+      const clear = document.createElement("button");
+      selectAll.type = clear.type = "button";
+      selectAll.textContent = `Select all ${rows.length}`;
+      clear.textContent = "Clear group";
+      selectAll.addEventListener("click", () => {
+        const next = new Set(selected);
+        rows.forEach((row) => next.add(row.tier));
+        onChange(next);
+      });
+      clear.addEventListener("click", () => {
+        const next = new Set(selected);
+        rows.forEach((row) => next.delete(row.tier));
+        onChange(next);
+      });
+      actions.append(selectAll, clear);
+      choices.appendChild(actions);
+    }
     rows.forEach((row) => {
       const label = document.createElement("label");
       const input = document.createElement("input");

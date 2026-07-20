@@ -27,7 +27,8 @@ def export_png(report: BenchReport, path: Path) -> Path:
     from PIL import Image, ImageDraw, ImageFont
 
     width = 960
-    height = 190 + max(1, len(report.rows)) * 42
+    models = report.summary.get("per_model") or []
+    height = 190 + max(1, len(models)) * 52
     image = Image.new("RGB", (width, height), "#0d1017")
     draw = ImageDraw.Draw(image)
     font = ImageFont.load_default(size=16)
@@ -36,15 +37,22 @@ def export_png(report: BenchReport, path: Path) -> Path:
     draw.text((32, 86), "WITHOUT", fill="#fb7185", font=font)
     draw.text((180, 86), "WITH SKILL", fill="#7c6cff", font=font)
     y = 128
-    for row in report.rows:
-        label = f"{row.tier} · trial {row.trial}"
+    for row in models:
+        label = str(row["tier"])
         draw.text((32, y), label, fill="#dce0e8", font=font)
-        if row.without_skill is not None:
-            draw.rectangle((420, y, 420 + int(row.without_skill * 180), y + 14), fill="#fb7185")
-        if row.with_skill is not None:
-            draw.rectangle((620, y, 620 + int(row.with_skill * 180), y + 14), fill="#7c6cff")
-        draw.text((820, y), "n/a" if row.uplift is None else f"{row.uplift:+.2f}", fill="#8ee6b0", font=font)
-        y += 42
+        before, after, uplift = row["without_rate"], row["with_rate"], row["uplift"]
+        if before is not None:
+            draw.rectangle((420, y, 420 + int(before * 180), y + 14), fill="#8991a0")
+        if after is not None:
+            draw.rectangle((620, y, 620 + int(after * 180), y + 14), fill="#23d6c2")
+        draw.text((820, y), "n/a" if uplift is None else f"{uplift:+.2f}", fill="#8ee6b0", font=font)
+        draw.text(
+            (420, y + 19),
+            f"{row['without_passed']}/{row['without_graded']}  ->  {row['with_passed']}/{row['with_graded']} trials",
+            fill="#8991a0",
+            font=font,
+        )
+        y += 52
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, format="PNG")
     return path

@@ -221,9 +221,16 @@
         <article><small>COVERAGE</small><strong id="metric-coverage">0 / 0</strong></article>
       </div>
       <p class="usage-line" id="arena-usage">Token and cost totals appear after a run; unknown provider pricing remains unknown.</p>
+      <section class="arena-insights" aria-live="polite">
+        <div class="result-heading"><span>Model impact · without skill → with skill</span><span class="status neutral" id="arena-impact-status">NO RUN</span></div>
+        <div class="arena-insight-metrics"><article><small id="arena-improved-label">LLMS IMPROVED</small><strong id="arena-improved">—</strong></article><article><small>SOLVED WITHOUT</small><strong id="arena-solved-before">—</strong></article><article class="accent"><small>SOLVED WITH SKILL</small><strong id="arena-solved-with">—</strong></article><article><small>REGRESSED</small><strong id="arena-regressed">—</strong></article></div>
+        <p class="arena-impact-story" id="arena-impact-story">Run multiple LLMs to see exactly which models already solve the task and which ones the skill helps.</p>
+        <div id="arena-model-impact" class="arena-model-impact-list"><p class="empty-state">Choose LLMs above and start the benchmark. One comparison line will appear per LLM.</p></div>
+        <div class="arena-reliability"><h2 id="arena-reliability-title">Reliability · waiting for trials</h2><p>Pass@1 is observed trial success; Pass@k means any of k trials succeeds; Pass^k means every trial succeeds. The interval is Wilson 95% over graded trials.</p><table><thead><tr><th>Phase</th><th>Pass@1</th><th>Pass@k</th><th>Pass^k</th><th>95% CI</th><th>Evidence</th></tr></thead><tbody id="arena-reliability-rows"><tr><td colspan="6" class="empty-state">Run Arena to calculate reliability.</td></tr></tbody></table></div>
+      </section>
       <div class="grid-shell">
         <div class="result-heading">
-          <span>Live results grid</span>
+          <span>Live trial evidence · raw rows</span>
           <div class="export-actions">
             <a class="button-link disabled" id="download-csv" aria-disabled="true">Download CSV</a>
             <a class="button-link disabled" id="download-png" aria-disabled="true">Download PNG</a>

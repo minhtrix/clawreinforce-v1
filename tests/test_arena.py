@@ -23,6 +23,33 @@ def test_oracle_health_and_uplift() -> None:
     assert report.summary["with_skill"] == 1.0
     assert report.summary["uplift"] == 1.0
     assert report.summary["coverage"] == {"completed_rows": 2, "expected_rows": 2}
+    assert report.summary["comparison"] == {
+        "model_count": 1,
+        "graded_models": 1,
+        "improved_models": 1,
+        "regressed_models": 0,
+        "unchanged_models": 0,
+        "solved_without": 0,
+        "solved_with": 1,
+        "rescued_models": 1,
+    }
+    assert report.summary["per_model"][0] == {
+        "tier": "fixture:upper-if-skilled",
+        "without_rate": 0.0,
+        "with_rate": 1.0,
+        "uplift": 1.0,
+        "without_passed": 0,
+        "with_passed": 2,
+        "without_graded": 2,
+        "with_graded": 2,
+        "expected_trials": 2,
+        "outcome": "improved",
+        "reason": None,
+    }
+    assert report.summary["reliability"]["with_skill"]["pass_at_1"] == 1.0
+    assert report.summary["reliability"]["with_skill"]["pass_at_k"] == 1.0
+    assert report.summary["reliability"]["with_skill"]["pass_all_k"] == 1.0
+    assert report.summary["reliability"]["without_skill"]["pass_at_1"] == 0.0
     assert any(event["type"] == "model_row" for event in events)
 
 
