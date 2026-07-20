@@ -174,15 +174,20 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                 elif path == "/api/tasks/health":
                     self._json(app.bench.health(str(payload["path"])))
                 elif path == "/api/improve":
+                    legacy_tier = str(payload.get("tier", ""))
+                    author_tier = str(payload.get("author_tier") or legacy_tier)
+                    raw_gates = payload.get("gate_tiers")
                     self._json(
                         improve_source(
                             app.project_root,
                             str(payload.get("source", "")),
-                            str(payload.get("tier", "")),
+                            legacy_tier or author_tier,
                             str(payload.get("strategy", "")),
                             int(payload.get("max_rewrites", 3)),
                             bool(payload.get("apply")),
                             app.providers.execute,
+                            author_tier=author_tier,
+                            gate_tiers=list(raw_gates) if isinstance(raw_gates, list) else None,
                         )
                     )
                 elif path == "/api/improve/gate":

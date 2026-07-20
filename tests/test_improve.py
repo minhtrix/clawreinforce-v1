@@ -5,6 +5,7 @@ import pytest
 
 from clawreinforce.adapters.providers import ProviderHub
 from clawreinforce.core.improve import gate_rewrite, improve_skill, uplift_gate, verified_examples
+from clawreinforce.core.improve_models import improve_skill_models
 from clawreinforce.core.models import CheckSpec, GoldenCase
 from clawreinforce.core.models import ProviderResult
 from clawreinforce.core.skill import load_skill
@@ -123,3 +124,47 @@ def test_fewshot_loop_preserves_rechecked_examples_across_rewrites(tmp_path: Pat
     assert report.candidate_body.count("## Examples (verified)") == 1
     assert "Output: HELLO" in report.candidate_body
     assert "Output: WORLD" in report.candidate_body
+
+
+def test_multi_model_improve_separates_author_from_gate_models(tmp_path: Path) -> None:
+    path = _broken_uppercase_skill(tmp_path)
+    report = improve_skill_models(
+        load_skill(path),
+        "fixture:upper-if-skilled",
+        ["fixture:upper-if-skilled", "fixture:echo"],
+        "instruct",
+        2,
+        ProviderHub(tmp_path).execute,
+    )
+    assert report.author_tier == "fixture:upper-if-skilled"
+    assert report.gate_tiers == ("fixture:upper-if-skilled", "fixture:echo")
+    assert report.status == "partial" and report.accepted
+    rows = {row.tier: row for row in report.per_model}
+    assert rows["fixture:upper-if-skilled"].before_pass_rate == 0
+    assert rows["fixture:upper-if-skilled"].after_pass_rate == 1
+    assert rows["fixture:echo"].before_pass_rate == rows["fixture:echo"].after_pass_rate == 0
+    assert report.measurement_note.startswith("One completion per model")
+
+
+def test_multi_model_gate_rejects_cross_model_regression(tmp_path: Path) -> None:
+    path = _broken_uppercase_skill(tmp_path)
+
+    def executor(tier: str, system: str, user: str) -> ProviderResult:
+        if tier == "author:rewrite":
+            return ProviderResult("completed", output="Return the supplied text in uppercase.")
+        rewritten = "uppercase" in system.lower()
+        if tier == "gate:target":
+            return ProviderResult("completed", output=user.upper() if rewritten else user)
+        return ProviderResult("completed", output="BROKEN" if rewritten else "HELLO")
+
+    report = improve_skill_models(
+        load_skill(path),
+        "author:rewrite",
+        ["gate:target", "gate:stable"],
+        "instruct",
+        1,
+        executor,
+    )
+    assert report.status == "rejected" and not report.accepted
+    assert report.attempts[0].regressions == ("gate:stable / target",)
+    assert report.diff == ""

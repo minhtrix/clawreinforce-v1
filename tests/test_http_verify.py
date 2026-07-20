@@ -127,6 +127,29 @@ def test_improve_http_runs_dry_run_then_applies_accepted_body(tmp_path: Path) ->
     assert "## Examples (verified)" in skill_file.read_text(encoding="utf-8")
 
 
+def test_improve_http_accepts_author_and_multiple_gate_models(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        result = request(
+            base,
+            "/api/improve",
+            {
+                "source": "examples/improvable-uppercase-skill",
+                "author_tier": "fixture:upper-if-skilled",
+                "gate_tiers": ["fixture:upper-if-skilled", "fixture:echo"],
+                "strategy": "instruct",
+                "max_rewrites": 2,
+                "apply": False,
+            },
+        )
+    assert result["author_tier"] == "fixture:upper-if-skilled"
+    assert result["gate_tiers"] == ["fixture:upper-if-skilled", "fixture:echo"]
+    assert result["status"] == "partial" and result["accepted"]
+    assert [row["tier"] for row in result["per_model"]] == [
+        "fixture:upper-if-skilled",
+        "fixture:echo",
+    ]
+
+
 def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         result = request(base, "/api/models/discover", {"provider": "fixture"})
