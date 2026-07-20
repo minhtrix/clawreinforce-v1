@@ -21,14 +21,14 @@ def improve_status() -> dict[str, object]:
     return {
         "status": "loop_ready",
         "explanation": (
-            "The proposal model may rewrite instructions or mine examples, but deterministic golden checks "
-            "alone decide whether each candidate survives."
+            "One author model proposes instructions or verified examples; every selected gate model then "
+            "re-runs every golden case, and deterministic checks alone decide whether the candidate survives."
         ),
         "gates": [
             {
                 "id": "rewrite",
                 "name": "Rewrite regression gate",
-                "explanation": "Accept only when the failing target turns green and every previous pass stays green.",
+                "explanation": "Accept only when a failing model × case target turns green and every previous pass across all gate models stays green.",
             },
             {
                 "id": "uplift",

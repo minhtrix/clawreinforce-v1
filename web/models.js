@@ -3,6 +3,11 @@ import { $, api, clearError, renderError, setStatus } from "/ui.js";
 let catalog = { providers: [], models: [], preset: "" };
 
 
+function publishCatalog() {
+  window.dispatchEvent(new CustomEvent("clawreinforce:models", { detail: catalog }));
+}
+
+
 function selectTier(tier) {
   if ([...$("#model-select").options].some((option) => option.value === tier)) {
     $("#model-select").value = tier;
@@ -86,6 +91,7 @@ async function discover(provider) {
       body: JSON.stringify({ provider }),
     });
     catalog = result;
+    publishCatalog();
     renderPicker($("#model-filter").value);
     renderRows($("#model-filter").value);
     setStatus(
@@ -171,8 +177,13 @@ export async function initModels(showTab) {
     applyTier("#arena-tier", $("#model-select").value);
     showTab("arena");
   });
+  $("#use-improve-model").addEventListener("click", () => {
+    window.dispatchEvent(new CustomEvent("clawreinforce:model-use", { detail: { tier: $("#model-select").value } }));
+    showTab("improve");
+  });
   try {
     catalog = await api("/api/models");
+    publishCatalog();
     renderPicker();
     renderRows();
     setStatus($("#models-status"), "READY", "good");

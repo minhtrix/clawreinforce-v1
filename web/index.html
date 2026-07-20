@@ -101,8 +101,12 @@
           <select id="improve-skill"><option value="">Loading project skills…</option></select>
           <label for="improve-source">Project-local skill path</label>
           <input id="improve-source" autocomplete="off" placeholder="examples/improvable-uppercase-skill">
-          <label for="improve-tier">Grader and proposal tier</label>
-          <select id="improve-tier"><option value="">Loading model tiers…</option></select>
+          <label for="improve-author-tier">Author model <small>proposes only; never grades itself implicitly</small></label>
+          <select id="improve-author-tier"><option value="">Loading model tiers…</option></select>
+          <label for="improve-model-filter">Gate models <small>every selected model re-runs every golden case</small></label>
+          <input id="improve-model-filter" type="search" placeholder="Filter gate models">
+          <div id="improve-gate-tiers" class="model-check-groups"><p class="empty-state">Loading model tiers…</p></div>
+          <small id="improve-selection-note">Choose at least one gate model. Calls scale with models × cases × proposals.</small>
           <label for="improve-strategy">Rewrite strategy</label>
           <select id="improve-strategy"><option value="instruct">instruct — rewrite rules</option><option value="fewshot">fewshot — verify examples</option></select>
           <label for="improve-max">Maximum rewrites</label>
@@ -113,7 +117,7 @@
         </section>
         <section class="result-shell" aria-live="polite">
           <div class="result-heading"><span>Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
-          <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, a tier, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-apply-state"></small></div>
+          <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, one author, gate models, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-run-context"></small><small id="improve-apply-state"></small><small id="improve-measurement-note"></small></div>
           <div class="evidence-section">
             <h2>Loop phases</h2>
             <ol class="phase-checklist" id="improve-phases">
@@ -123,9 +127,9 @@
               <li data-phase="gate"><span>4</span><div><strong>Gate</strong><small>Acceptance decision pending.</small></div></li>
             </ol>
           </div>
-          <div class="evidence-section"><h2>Baseline → best by model</h2><div id="improve-model-lines" class="model-score-lines"><p class="empty-state">Run Improve to compare the selected model against its accepted best body.</p></div></div>
+          <div class="evidence-section"><h2>Baseline → accepted best by gate model</h2><div id="improve-model-lines" class="model-score-lines"><p class="empty-state">Run Improve to compare every selected gate model against the accepted body.</p></div><small id="improve-usage"></small></div>
           <div class="evidence-section">
-            <h2>Golden cases</h2>
+            <h2>Golden cases · all gate models must pass</h2>
             <table><thead><tr><th>Case</th><th>Before</th><th>After</th></tr></thead><tbody id="improve-cases"><tr><td colspan="3" class="empty-state">Run Improve to grade all declared cases.</td></tr></tbody></table>
           </div>
           <div class="evidence-section"><h2>Accepted diff</h2><pre class="diff-output" id="improve-diff">An accepted body diff appears here. Rejected proposals never replace it.</pre></div>
@@ -209,6 +213,7 @@
         <label for="model-select">Discovered model tiers</label>
         <select id="model-select"><option value="">Loading provider catalog…</option></select>
         <button class="secondary" id="use-verify-model">Use in Verify</button>
+        <button class="secondary" id="use-improve-model">Use as Improve author</button>
         <button class="secondary" id="use-arena-model">Use in Arena</button>
       </div>
       <pre class="structured-error" id="models-error" hidden></pre>

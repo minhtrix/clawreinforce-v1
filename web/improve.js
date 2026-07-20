@@ -1,4 +1,9 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { fillTierSelect, renderTierChecks } from "/model-picker.js";
+
+
+let modelCatalog = [];
+let selectedGateTiers = new Set();
 
 
 function setPhase(name, state, message) {
@@ -38,18 +43,30 @@ function passRate(cases) {
 
 
 function renderModelLine(result) {
-  const before = passRate(result.before);
-  const after = passRate(result.after);
-  const line = document.createElement("div");
-  line.className = "model-score-line";
-  const model = document.createElement("code");
-  model.textContent = result.tier;
-  const scores = document.createElement("strong");
-  scores.textContent = before == null || after == null ? "ungraded → ungraded" : `${(before * 100).toFixed(0)}% → ${(after * 100).toFixed(0)}%`;
-  const label = document.createElement("small");
-  label.textContent = "baseline → best accepted body";
-  line.append(model, scores, label);
-  $("#improve-model-lines").replaceChildren(line);
+  const rows = result.per_model || [{ tier: result.tier, before: result.before, after: result.after }];
+  $("#improve-model-lines").replaceChildren(...rows.map((row) => {
+    const before = row.before_pass_rate ?? passRate(row.before);
+    const after = row.after_pass_rate ?? passRate(row.after);
+    const line = document.createElement("div");
+    line.className = "model-score-line";
+    const model = document.createElement("code");
+    model.textContent = row.tier;
+    const scores = document.createElement("strong");
+    scores.textContent = before == null || after == null ? "ungraded → ungraded" : `${(before * 100).toFixed(0)}% → ${(after * 100).toFixed(0)}%`;
+    const label = document.createElement("small");
+    label.textContent = "gate execution · baseline → accepted best body";
+    line.append(model, scores, label);
+    return line;
+  }));
+}
+
+
+function renderUsage(result) {
+  const rows = Object.entries(result.usage || {});
+  $("#improve-usage").textContent = rows.length
+    ? rows.map(([tier, value]) => `${tier}: ${value.calls} calls · ${value.input_tokens || value.output_tokens ? `${value.input_tokens}+${value.output_tokens} tokens` : "tokens n/a"}`).join(" · ")
+    : "Provider token usage was not reported.";
+  $("#improve-measurement-note").textContent = result.measurement_note || "";
 }
 
 
@@ -88,12 +105,14 @@ function attemptItem(attempt) {
 
 function renderReport(result) {
   $("#improve-decision").textContent = result.reason;
+  $("#improve-run-context").textContent = `Author: ${result.author_tier || result.tier} · Gate: ${(result.gate_tiers || [result.tier]).join(", ")}`;
   $("#improve-apply-state").textContent = result.applied
     ? "Accepted body written to SKILL.md."
     : result.dry_run ? "Dry-run only; SKILL.md was not changed." : "No accepted body was available to write.";
   const ids = [...new Set([...Object.keys(result.before), ...Object.keys(result.after)])];
   renderPhases(result);
   renderModelLine(result);
+  renderUsage(result);
   $("#improve-cases").replaceChildren(...ids.map((id) => caseRow(id, result.before[id], result.after[id])));
   $("#improve-diff").textContent = result.diff || "No accepted body change. Inspect the gate reasons below.";
   if (result.attempts.length) {
@@ -113,11 +132,15 @@ async function runImprove() {
   runningPhases();
   setStatus($("#improve-status"), "RUNNING", "neutral");
   try {
+    if (!selectedGateTiers.size) {
+      throw { code: "improve.gate_tiers", kind: "validation", message: "Choose at least one gate model.", context: {} };
+    }
     const result = await api("/api/improve", {
       method: "POST",
       body: JSON.stringify({
         source: $("#improve-source").value.trim(),
-        tier: $("#improve-tier").value,
+        author_tier: $("#improve-author-tier").value,
+        gate_tiers: [...selectedGateTiers],
         strategy: $("#improve-strategy").value,
         max_rewrites: Number($("#improve-max").value),
         apply: $("#improve-apply").checked,
@@ -133,6 +156,21 @@ async function runImprove() {
 }
 
 
+function renderModelPickers(models, preferred = "") {
+  modelCatalog = models;
+  const author = $("#improve-author-tier");
+  const initial = preferred || author.value || models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier;
+  fillTierSelect(author, models, initial);
+  selectedGateTiers = new Set([...selectedGateTiers].filter((tier) => models.some((model) => model.tier === tier)));
+  if (!selectedGateTiers.size && author.value) selectedGateTiers.add(author.value);
+  renderTierChecks($("#improve-gate-tiers"), models, selectedGateTiers, $("#improve-model-filter").value, (next) => {
+    selectedGateTiers = next;
+    renderModelPickers(modelCatalog, author.value);
+  });
+  $("#improve-selection-note").textContent = `${selectedGateTiers.size} gate model(s) selected · calls scale with models × cases × proposals.`;
+}
+
+
 function loadOptions(skills, models) {
   const skillPicker = $("#improve-skill");
   skillPicker.replaceChildren(...skills.map((skill) => new Option(`${skill.name} — ${skill.description}`, skill.source)));
@@ -140,15 +178,19 @@ function loadOptions(skills, models) {
   if (preferred) skillPicker.value = preferred.source;
   $("#improve-source").value = preferred?.source || "";
   skillPicker.addEventListener("change", () => { $("#improve-source").value = skillPicker.value; });
-  const tierPicker = $("#improve-tier");
-  tierPicker.replaceChildren(...models.map((model) => new Option(model.tier, model.tier)));
-  const fixture = models.find((model) => model.tier === "fixture:upper-if-skilled") || models[0];
-  if (fixture) tierPicker.value = fixture.tier;
+  renderModelPickers(models);
 }
 
 
 export async function initImprove() {
   $("#improve-button").addEventListener("click", runImprove);
+  $("#improve-model-filter").addEventListener("input", () => renderModelPickers(modelCatalog, $("#improve-author-tier").value));
+  window.addEventListener("clawreinforce:models", (event) => renderModelPickers(event.detail.models || []));
+  window.addEventListener("clawreinforce:model-use", (event) => {
+    const tier = event.detail.tier;
+    if (tier) selectedGateTiers.add(tier);
+    renderModelPickers(modelCatalog, tier);
+  });
   try {
     const [status, skillData, modelData] = await Promise.all([api("/api/improve/status"), api("/api/skills"), api("/api/models")]);
     $("#improve-explanation").textContent = status.explanation;

@@ -29,6 +29,8 @@ Run the tests with `python -m pip install -e ".[dev]"` followed by `python -m py
 
 Improve is dry-run by default: the selected tier grades every golden case, proposes at most the requested number of rewrites, and prints the accepted unified diff. Add `--apply` only when the gated body should replace the current instructions.
 
+The GUI separates one **author model** from any number of **gate models**. The author only proposes; every gate model re-runs every golden case, and a previously green model × case regression blocks the candidate. Improve reports one completion per pair and points to Arena trials when statistical confidence is required.
+
 ```console
 $ clawreinforce improve examples/improvable-uppercase-skill --tier fixture:upper-if-skilled --strategy fewshot --max-rewrites 3
 ```
