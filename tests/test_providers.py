@@ -127,15 +127,3 @@ def test_default_openai_tier_uses_responses_api_when_key_is_set(tmp_path: Path) 
     assert hub.request[1] == "https://api.openai.com/v1/responses"
     assert hub.request[2]["model"] == "gpt-5.6-sol"
     assert hub.request[3]["Authorization"] == "Bearer test-key"
-
-
-def test_add_model_persists_without_exposing_or_losing_key(tmp_path: Path) -> None:
-    store = tmp_path / ".clawreinforce"
-    store.mkdir()
-    path = store / "providers.json"
-    path.write_text(json.dumps({"openai": {"api_key": "secret"}}), encoding="utf-8")
-    hub = ProviderHub(tmp_path)
-    row = hub.add_model("openai", "gpt-5.6-sol")
-    assert row["models"] == ["gpt-5.6-sol"]
-    assert "api_key" not in row
-    assert json.loads(path.read_text(encoding="utf-8"))["openai"]["api_key"] == "secret"

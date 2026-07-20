@@ -46,27 +46,3 @@ def test_improve_cli_apply_writes_only_accepted_body(tmp_path: Path, capsys) -> 
     assert payload["applied"] and not payload["dry_run"]
     assert document.startswith("---\nname: broken\ndescription: keep me\n---\n")
     assert "## Examples (verified)" in document
-
-
-def test_models_cli_has_probe_local_and_model_management_parity(tmp_path: Path, capsys, monkeypatch) -> None:
-    def local_json(url: str, headers: dict[str, str] | None = None, timeout: float = 2.0) -> dict:
-        return {"models": []}
-
-    monkeypatch.setattr("clawreinforce.adapters.provider_probe._get_json", local_json)
-    exit_code = main(
-        [
-            "models",
-            "--project",
-            str(tmp_path),
-            "--add-model",
-            "openai:gpt-5.6-sol",
-            "--local",
-            "--probe",
-            "fixture:echo",
-        ]
-    )
-    payload = json.loads(capsys.readouterr().out)
-    assert exit_code == 0
-    assert payload["added"]["models"] == ["gpt-5.6-sol"]
-    assert payload["local"]["ollama"]["reachable"] is True
-    assert payload["probe"]["ok"] is True

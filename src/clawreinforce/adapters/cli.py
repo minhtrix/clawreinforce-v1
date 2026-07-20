@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from clawreinforce.adapters.providers import ProviderHub
-from clawreinforce.adapters.provider_probe import local_status, probe_model
 from clawreinforce.adapters.cli_improve import improve_command
 from clawreinforce.core.badges import badge_svg
 from clawreinforce.core.arena import load_task, run_bench, task_health
@@ -115,17 +114,11 @@ def _cmd_models(args: argparse.Namespace) -> int:
         payload["discovery"] = {"status": result.status, "models": discovered, "last_error": result.error}
         if discovered:
             payload["preset"] = f"{args.discover}:{discovered[0]}"
-    if args.add_model:
-        provider, separator, model = args.add_model.partition(":")
-        if not separator:
-            raise ClawError("model.invalid", "validation", "add-model must be provider:model", value=args.add_model)
-        payload["added"] = hub.add_model(provider, model)
-    if args.local:
-        payload["local"] = local_status(hub)
     if args.probe:
-        payload["probe"] = probe_model(hub, args.probe)
+        result = hub.execute(args.probe, "Follow the user instruction exactly.", "Reply with exactly: OLLAMA_CLOUD_OK")
+        payload["probe"] = {"status": result.status, "output": result.output, "last_error": result.error}
     _print(payload)
-    return 0 if not args.probe or payload["probe"]["ok"] else 1
+    return 0 if not args.probe or payload["probe"]["status"] == "completed" else 1
 
 
 def _cmd_improve(args: argparse.Namespace) -> int:
@@ -236,8 +229,6 @@ def build_parser() -> argparse.ArgumentParser:
     models.add_argument("--project", default=".")
     models.add_argument("--discover")
     models.add_argument("--probe", help="provider:model connectivity test")
-    models.add_argument("--local", action="store_true", help="show Ollama VRAM and keyless local endpoints")
-    models.add_argument("--add-model", help="persist a provider:model in the ignored local registry")
     models.set_defaults(func=_cmd_models)
     improve = commands.add_parser("improve", help="propose and deterministically gate skill-body rewrites")
     improve.add_argument("skill", help="local skill path or SKILL.md")
