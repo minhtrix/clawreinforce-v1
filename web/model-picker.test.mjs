@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { groupModels } from "./model-picker.js";
+import { groupModels, updateSelection } from "./model-picker.js";
 
 
 const models = [
@@ -18,4 +18,12 @@ test("groupModels preserves provider groups and filters every model field", () =
   ]);
   assert.deepEqual(groupModels(models, "5.6").map((group) => group.provider), ["openai"]);
   assert.deepEqual(groupModels(models, "upper")[0].rows.map((row) => row.tier), ["fixture:upper-if-skilled"]);
+});
+
+
+test("model choice state supports one author and many gate models", () => {
+  const gates = updateSelection(new Set(["fixture:echo"]), "openai:gpt-5.6-sol", true, true);
+  assert.deepEqual([...gates], ["fixture:echo", "openai:gpt-5.6-sol"]);
+  const author = updateSelection(gates, "fixture:upper-if-skilled", true, false);
+  assert.deepEqual([...author], ["fixture:upper-if-skilled"]);
 });

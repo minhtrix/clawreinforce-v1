@@ -1,8 +1,26 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
 import { loadHistory } from "/arena_history.js";
+import { renderModelChoices } from "/model-picker.js";
 
 let currentRun = null;
 let stream = null;
+let modelCatalog = [];
+let selectedTiers = new Set();
+
+
+function renderModels(preferred = "") {
+  selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
+  if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
+  if (!selectedTiers.size && modelCatalog.length) {
+    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
+  }
+  renderModelChoices($("#arena-tiers"), modelCatalog, selectedTiers, {
+    filter: $("#arena-model-filter").value,
+    name: "arena-tier",
+    onChange: (next) => { selectedTiers = next; renderModels(); },
+  });
+  $("#arena-selection-note").textContent = `${selectedTiers.size} model(s) selected · ${$("#arena-trials").value} trial(s) per model.`;
+}
 
 
 function score(value, signed = false) {
@@ -183,12 +201,15 @@ async function start() {
   setStatus($("#arena-feed-status"), "LIVE", "warn");
   $("#bench-button").disabled = true;
   try {
+    if (!selectedTiers.size) {
+      throw { code: "arena.tiers", kind: "validation", message: "Choose at least one arena model.", context: {} };
+    }
     const result = await api("/api/bench", {
       method: "POST",
       body: JSON.stringify({
         task: $("#arena-task").value.trim(),
         skill: $("#arena-skill").value.trim(),
-        tiers: [$("#arena-tier").value],
+        tiers: [...selectedTiers],
         trials: Number($("#arena-trials").value),
       }),
     });
@@ -220,7 +241,7 @@ async function loadPickers() {
     const [taskData, skillData, modelData] = await Promise.all([api("/api/tasks"), api("/api/skills"), api("/api/models")]);
     $("#arena-task-picker").replaceChildren(...options(taskData.tasks, (row) => `${row.difficulty} · ${row.name}${row.gradeable ? "" : " · ungraded"}`));
     $("#arena-skill-picker").replaceChildren(...options(skillData.skills, (row) => row.name));
-    $("#arena-tier").replaceChildren(...options(modelData.models, (row) => row.tier));
+    modelCatalog = modelData.models;
     const task = taskData.tasks.find((row) => row.source === "examples/uppercase-task") || taskData.tasks[0];
     const skill = skillData.skills.find((row) => row.source === "examples/uppercase-skill") || skillData.skills[0];
     const tier = modelData.models.find((row) => row.tier === "fixture:upper-if-skilled") || modelData.models[0];
@@ -229,7 +250,7 @@ async function loadPickers() {
     $("#arena-task").value = task.source;
     $("#arena-skill-picker").value = skill.source;
     $("#arena-skill").value = skill.source;
-    $("#arena-tier").value = tier.tier;
+    renderModels(tier.tier);
   } catch (failure) {
     setStatus($("#arena-status"), "ERROR", "bad");
     renderError($("#arena-error"), failure);
@@ -241,6 +262,16 @@ export function initArena() {
   $("#arena-task-picker").addEventListener("change", (event) => { $("#arena-task").value = event.target.value; });
   $("#arena-skill-picker").addEventListener("change", (event) => { $("#arena-skill").value = event.target.value; });
   $("#bench-button").addEventListener("click", start);
+  $("#arena-model-filter").addEventListener("input", () => renderModels());
+  $("#arena-trials").addEventListener("input", () => renderModels());
+  window.addEventListener("clawreinforce:models", (event) => {
+    modelCatalog = event.detail.models || [];
+    renderModels();
+  });
+  window.addEventListener("clawreinforce:model-use", (event) => {
+    if (event.detail.target !== "arena") return;
+    renderModels(event.detail.tier);
+  });
   $("#cancel-button").addEventListener("click", async () => {
     if (!currentRun) return;
     try {

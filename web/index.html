@@ -36,8 +36,10 @@
           <select id="verify-skill"><option value="">Loading example skills…</option></select>
           <label for="verify-source">Skill path, GitHub URL, or ClawHub slug</label>
           <input id="verify-source" autocomplete="off" placeholder="examples/uppercase-skill or owner/skills/slug">
-          <label for="verify-tier">Certification tier</label>
-          <select id="verify-tier"><option value="">Loading model tiers…</option></select>
+          <label for="verify-model-filter">Certification models <small>every selected model runs every declared case</small></label>
+          <input id="verify-model-filter" type="search" placeholder="Filter providers or models">
+          <div id="verify-tiers" class="model-choice-groups"><p class="empty-state">Loading model tiers…</p></div>
+          <small id="verify-selection-note">Choose at least one model. Guard uses the same selection.</small>
           <label for="verify-samples">Samples per golden case</label>
           <input id="verify-samples" type="number" min="1" max="20" value="1">
           <div class="actions">
@@ -101,11 +103,12 @@
           <select id="improve-skill"><option value="">Loading project skills…</option></select>
           <label for="improve-source">Project-local skill path</label>
           <input id="improve-source" autocomplete="off" placeholder="examples/improvable-uppercase-skill">
-          <label for="improve-author-tier">Author model <small>proposes only; never grades itself implicitly</small></label>
-          <select id="improve-author-tier"><option value="">Loading model tiers…</option></select>
-          <label for="improve-model-filter">Gate models <small>every selected model re-runs every golden case</small></label>
-          <input id="improve-model-filter" type="search" placeholder="Filter gate models">
-          <div id="improve-gate-tiers" class="model-check-groups"><p class="empty-state">Loading model tiers…</p></div>
+          <label for="improve-model-filter">Author + gate models <small>one author proposes; every gate model independently checks it</small></label>
+          <input id="improve-model-filter" type="search" placeholder="Filter providers or models">
+          <span class="model-role-label">AUTHOR / BREAKER · choose one</span>
+          <div id="improve-author-tiers" class="model-choice-groups compact"><p class="empty-state">Loading author models…</p></div>
+          <span class="model-role-label">GATE · choose one or more</span>
+          <div id="improve-gate-tiers" class="model-choice-groups compact"><p class="empty-state">Loading gate models…</p></div>
           <small id="improve-selection-note">Choose at least one gate model. Calls scale with models × cases × proposals.</small>
           <label for="improve-strategy">Rewrite strategy</label>
           <select id="improve-strategy"><option value="instruct">instruct — rewrite rules</option><option value="fewshot">fewshot — verify examples</option></select>
@@ -156,7 +159,12 @@
         <label>Task path or URL<input id="arena-task" placeholder="examples/uppercase-task or SkillsBench URL"></label>
         <label>Skill from the API<select id="arena-skill-picker"><option value="">Loading skills…</option></select></label>
         <label>Skill path, GitHub URL, or ClawHub slug<input id="arena-skill" placeholder="examples/uppercase-skill or ClawHub slug"></label>
-        <label>Model tier<select id="arena-tier"><option value="">Loading tiers…</option></select></label>
+        <div class="arena-model-control">
+          <label for="arena-model-filter">Models <small>same task and skill, independently measured per selected model</small></label>
+          <input id="arena-model-filter" type="search" placeholder="Filter providers or models">
+          <div id="arena-tiers" class="model-choice-groups compact"><p class="empty-state">Loading model tiers…</p></div>
+          <small id="arena-selection-note">Choose at least one model. Trials apply to each selection.</small>
+        </div>
         <label>Trials<input id="arena-trials" type="number" min="1" max="20" value="2"></label>
         <div class="arena-actions">
           <button class="primary" id="bench-button">Start benchmark</button>
@@ -210,8 +218,8 @@
         <input id="model-filter" type="search" placeholder="Filter providers or models">
       </div>
       <div class="model-picker">
-        <label for="model-select">Discovered model tiers</label>
-        <select id="model-select"><option value="">Loading provider catalog…</option></select>
+        <label>Discovered model tiers <small>choose one, then send it into a workflow</small></label>
+        <div id="model-choices" class="model-choice-groups"><p class="empty-state">Loading provider catalog…</p></div>
         <button class="secondary" id="use-verify-model">Use in Verify</button>
         <button class="secondary" id="use-improve-model">Use as Improve author</button>
         <button class="secondary" id="use-arena-model">Use in Arena</button>

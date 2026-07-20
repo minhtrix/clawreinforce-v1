@@ -1,6 +1,23 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { renderModelChoices } from "/model-picker.js";
 
 let currentCertificate = null;
+let modelCatalog = [];
+let selectedTiers = new Set();
+
+function renderModels(preferred = "") {
+  selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
+  if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
+  if (!selectedTiers.size && modelCatalog.length) {
+    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
+  }
+  renderModelChoices($("#verify-tiers"), modelCatalog, selectedTiers, {
+    filter: $("#verify-model-filter").value,
+    name: "verify-tier",
+    onChange: (next) => { selectedTiers = next; renderModels(); },
+  });
+  $("#verify-selection-note").textContent = `${selectedTiers.size} model(s) selected · Certify and Guard use this same set.`;
+}
 
 function emptyRow(message) {
   const row = document.createElement("tr");
@@ -71,10 +88,13 @@ async function runEvidence(kind) {
   clearError(error);
   setStatus($("#verify-status"), kind === "scan" ? "SCANNING" : "CERTIFYING", "warn");
   try {
+    if (kind === "certify" && !selectedTiers.size) {
+      throw { code: "verify.tiers", kind: "validation", message: "Choose at least one certification model.", context: {} };
+    }
     const source = $("#verify-source").value.trim();
     const payload = kind === "scan"
       ? { path: source }
-      : { source, tiers: [$("#verify-tier").value], samples: Number($("#verify-samples").value) };
+      : { source, tiers: [...selectedTiers], samples: Number($("#verify-samples").value) };
     const result = await api(`/api/${kind}`, { method: "POST", body: JSON.stringify(payload) });
     renderFindings(result.findings || []);
     if (kind === "certify") {
@@ -101,11 +121,14 @@ async function runGuard() {
   $("#guard-verdict-label").textContent = "CHECKING";
   $("#guard-reasons").innerHTML = "<li>Fetching, scanning, and running declared cases…</li>";
   try {
+    if (!selectedTiers.size) {
+      throw { code: "guard.tiers", kind: "validation", message: "Choose at least one guard model.", context: {} };
+    }
     const result = await api("/api/guard", {
       method: "POST",
       body: JSON.stringify({
         source: $("#guard-source").value.trim(),
-        tiers: [$("#verify-tier").value],
+        tiers: [...selectedTiers],
         samples: Number($("#verify-samples").value),
       }),
     });
@@ -137,15 +160,8 @@ async function loadPickers() {
     $("#verify-skill").replaceChildren(...skills);
     const preferred = skillData.skills.find((skill) => skill.source === "examples/uppercase-skill");
     if (preferred) $("#verify-skill").value = preferred.source;
-    const tiers = modelData.models.map((model) => {
-      const option = document.createElement("option");
-      option.value = model.tier;
-      option.textContent = model.tier;
-      return option;
-    });
-    $("#verify-tier").replaceChildren(...tiers);
-    const fixture = modelData.models.find((model) => model.tier === "fixture:upper-if-skilled");
-    $("#verify-tier").value = fixture?.tier || modelData.preset;
+    modelCatalog = modelData.models;
+    renderModels(modelData.models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier || modelData.preset);
     if (skills.length) {
       $("#verify-source").value = $("#verify-skill").value;
       $("#guard-source").value = $("#verify-skill").value;
@@ -164,6 +180,15 @@ export function initVerify() {
   $("#scan-button").addEventListener("click", () => runEvidence("scan"));
   $("#certify-button").addEventListener("click", () => runEvidence("certify"));
   $("#guard-button").addEventListener("click", runGuard);
+  $("#verify-model-filter").addEventListener("input", () => renderModels());
+  window.addEventListener("clawreinforce:models", (event) => {
+    modelCatalog = event.detail.models || [];
+    renderModels();
+  });
+  window.addEventListener("clawreinforce:model-use", (event) => {
+    if (event.detail.target !== "verify") return;
+    renderModels(event.detail.tier);
+  });
   $("#check-signature").addEventListener("click", async () => {
     clearError($("#verify-error"));
     try {

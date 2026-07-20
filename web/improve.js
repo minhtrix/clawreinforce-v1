@@ -1,9 +1,10 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
-import { fillTierSelect, renderTierChecks } from "/model-picker.js";
+import { renderModelChoices } from "/model-picker.js";
 
 
 let modelCatalog = [];
 let selectedGateTiers = new Set();
+let authorTier = "";
 
 
 function setPhase(name, state, message) {
@@ -135,11 +136,14 @@ async function runImprove() {
     if (!selectedGateTiers.size) {
       throw { code: "improve.gate_tiers", kind: "validation", message: "Choose at least one gate model.", context: {} };
     }
+    if (!authorTier) {
+      throw { code: "improve.author_tier", kind: "validation", message: "Choose one author model.", context: {} };
+    }
     const result = await api("/api/improve", {
       method: "POST",
       body: JSON.stringify({
         source: $("#improve-source").value.trim(),
-        author_tier: $("#improve-author-tier").value,
+        author_tier: authorTier,
         gate_tiers: [...selectedGateTiers],
         strategy: $("#improve-strategy").value,
         max_rewrites: Number($("#improve-max").value),
@@ -158,16 +162,31 @@ async function runImprove() {
 
 function renderModelPickers(models, preferred = "") {
   modelCatalog = models;
-  const author = $("#improve-author-tier");
-  const initial = preferred || author.value || models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier;
-  fillTierSelect(author, models, initial);
+  const available = new Set(models.map((model) => model.tier));
+  const initial = preferred || (available.has(authorTier) ? authorTier : "")
+    || models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier || models[0]?.tier || "";
+  authorTier = initial;
   selectedGateTiers = new Set([...selectedGateTiers].filter((tier) => models.some((model) => model.tier === tier)));
-  if (!selectedGateTiers.size && author.value) selectedGateTiers.add(author.value);
-  renderTierChecks($("#improve-gate-tiers"), models, selectedGateTiers, $("#improve-model-filter").value, (next) => {
-    selectedGateTiers = next;
-    renderModelPickers(modelCatalog, author.value);
+  if (!selectedGateTiers.size && authorTier) selectedGateTiers.add(authorTier);
+  const filter = $("#improve-model-filter").value;
+  renderModelChoices($("#improve-author-tiers"), models, new Set(authorTier ? [authorTier] : []), {
+    filter,
+    multiple: false,
+    name: "improve-author-tier",
+    onChange: (next) => {
+      authorTier = [...next][0] || "";
+      renderModelPickers(modelCatalog);
+    },
   });
-  $("#improve-selection-note").textContent = `${selectedGateTiers.size} gate model(s) selected · calls scale with models × cases × proposals.`;
+  renderModelChoices($("#improve-gate-tiers"), models, selectedGateTiers, {
+    filter,
+    name: "improve-gate-tier",
+    onChange: (next) => {
+      selectedGateTiers = next;
+      renderModelPickers(modelCatalog);
+    },
+  });
+  $("#improve-selection-note").textContent = `Author: ${authorTier || "none"} · ${selectedGateTiers.size} gate model(s) · calls scale with models × cases × proposals.`;
 }
 
 
@@ -184,11 +203,11 @@ function loadOptions(skills, models) {
 
 export async function initImprove() {
   $("#improve-button").addEventListener("click", runImprove);
-  $("#improve-model-filter").addEventListener("input", () => renderModelPickers(modelCatalog, $("#improve-author-tier").value));
+  $("#improve-model-filter").addEventListener("input", () => renderModelPickers(modelCatalog));
   window.addEventListener("clawreinforce:models", (event) => renderModelPickers(event.detail.models || []));
   window.addEventListener("clawreinforce:model-use", (event) => {
+    if (event.detail.target !== "improve") return;
     const tier = event.detail.tier;
-    if (tier) selectedGateTiers.add(tier);
     renderModelPickers(modelCatalog, tier);
   });
   try {

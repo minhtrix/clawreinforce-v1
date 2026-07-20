@@ -11,6 +11,14 @@ export function groupModels(models, filter = "") {
 }
 
 
+export function updateSelection(selected, tier, checked, multiple = true) {
+  const next = multiple ? new Set(selected) : new Set();
+  if (checked) next.add(tier);
+  else next.delete(tier);
+  return next;
+}
+
+
 export function fillTierSelect(select, models, preferred = "") {
   const nodes = groupModels(models).map(({ provider, rows }) => {
     const group = document.createElement("optgroup");
@@ -24,37 +32,56 @@ export function fillTierSelect(select, models, preferred = "") {
 }
 
 
-export function renderTierChecks(container, models, selected, filter, onChange) {
+export function renderModelChoices(container, models, selected, options = {}) {
+  const {
+    filter = "",
+    multiple = true,
+    name = "model-tier",
+    onChange = () => {},
+    emptyMessage = "No matching models. Clear the filter or discover a provider in Models.",
+  } = options;
   const groups = groupModels(models, filter);
   if (!groups.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = "No matching gate models. Clear the filter or discover a provider in Models.";
+    empty.textContent = emptyMessage;
     container.replaceChildren(empty);
     return;
   }
   const nodes = groups.map(({ provider, rows }) => {
-    const group = document.createElement("fieldset");
-    const legend = document.createElement("legend");
-    legend.textContent = provider;
-    group.appendChild(legend);
+    const group = document.createElement("details");
+    const summary = document.createElement("summary");
+    const choices = document.createElement("div");
+    const selectedCount = rows.filter((row) => selected.has(row.tier)).length;
+    group.open = Boolean(selectedCount) || groups.length <= 2;
+    summary.textContent = `${provider} · ${selectedCount}/${rows.length} selected`;
+    choices.className = "model-choice-list";
+    group.append(summary, choices);
     rows.forEach((row) => {
       const label = document.createElement("label");
       const input = document.createElement("input");
       const text = document.createElement("span");
-      input.type = "checkbox";
+      input.type = multiple ? "checkbox" : "radio";
+      input.name = name;
       input.value = row.tier;
       input.checked = selected.has(row.tier);
-      text.textContent = row.model;
+      const model = document.createElement("strong");
+      const tier = document.createElement("small");
+      model.textContent = row.model;
+      tier.textContent = row.tier;
+      text.append(model, tier);
       input.addEventListener("change", () => {
-        const next = new Set(selected);
-        input.checked ? next.add(row.tier) : next.delete(row.tier);
-        onChange(next);
+        onChange(updateSelection(selected, row.tier, input.checked, multiple));
       });
       label.append(input, text);
-      group.appendChild(label);
+      choices.appendChild(label);
     });
     return group;
   });
   container.replaceChildren(...nodes);
+}
+
+
+export function renderTierChecks(container, models, selected, filter, onChange) {
+  renderModelChoices(container, models, selected, { filter, multiple: true, onChange });
 }

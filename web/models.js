@@ -1,6 +1,8 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { renderModelChoices } from "/model-picker.js";
 
 let catalog = { providers: [], models: [], preset: "" };
+let selectedTier = "";
 
 
 function publishCatalog() {
@@ -9,42 +11,33 @@ function publishCatalog() {
 
 
 function selectTier(tier) {
-  if ([...$("#model-select").options].some((option) => option.value === tier)) {
-    $("#model-select").value = tier;
-  }
+  if (catalog.models.some((row) => row.tier === tier)) selectedTier = tier;
+  renderPicker($("#model-filter").value);
 }
 
 
 function renderPicker(filter = "") {
-  const previous = $("#model-select").value;
   const query = filter.toLowerCase();
   const rows = catalog.models.filter((row) => `${row.provider} ${row.model} ${row.tier}`.toLowerCase().includes(query));
-  const groups = new Map();
-  rows.forEach((row) => {
-    if (!groups.has(row.provider)) {
-      const group = document.createElement("optgroup");
-      group.label = row.provider;
-      groups.set(row.provider, group);
-    }
-    const option = document.createElement("option");
-    option.value = row.tier;
-    option.textContent = row.model;
-    groups.get(row.provider).appendChild(option);
-  });
-  const nodes = [...groups.values()];
-  if (!nodes.length) {
-    const empty = document.createElement("option");
-    empty.value = "";
-    empty.textContent = filter ? "No matching models — clear the filter or Discover a provider" : "No models discovered — use a provider Discover action";
-    nodes.push(empty);
+  if (!catalog.models.some((row) => row.tier === selectedTier)) {
+    selectedTier = catalog.models.find((row) => row.tier === "fixture:upper-if-skilled")?.tier
+      || catalog.preset || catalog.models[0]?.tier || "";
   }
-  $("#model-select").replaceChildren(...nodes);
-  const preferred = rows.some((row) => row.tier === previous)
-    ? previous
-    : rows.some((row) => row.tier === catalog.preset) ? catalog.preset : rows[0]?.tier;
-  selectTier(preferred || "");
-  const available = Boolean($("#model-select").value);
+  renderModelChoices($("#model-choices"), catalog.models, new Set(selectedTier ? [selectedTier] : []), {
+    filter,
+    multiple: false,
+    name: "catalog-tier",
+    emptyMessage: filter
+      ? "No matching models. Clear the filter or Discover a provider."
+      : "No models discovered. Use a provider Discover action below.",
+    onChange: (next) => {
+      selectedTier = [...next][0] || "";
+      renderPicker(filter);
+    },
+  });
+  const available = Boolean(selectedTier && rows.some((row) => row.tier === selectedTier));
   $("#use-verify-model").disabled = !available;
+  $("#use-improve-model").disabled = !available;
   $("#use-arena-model").disabled = !available;
 }
 
@@ -152,33 +145,21 @@ function renderRows(filter = "") {
 }
 
 
-function applyTier(selector, tier) {
-  const select = $(selector);
-  if (![...select.options].some((option) => option.value === tier)) {
-    const option = document.createElement("option");
-    option.value = tier;
-    option.textContent = tier;
-    select.appendChild(option);
-  }
-  select.value = tier;
-}
-
-
 export async function initModels(showTab) {
   $("#model-filter").addEventListener("input", (event) => {
     renderPicker(event.target.value);
     renderRows(event.target.value);
   });
   $("#use-verify-model").addEventListener("click", () => {
-    applyTier("#verify-tier", $("#model-select").value);
+    window.dispatchEvent(new CustomEvent("clawreinforce:model-use", { detail: { target: "verify", tier: selectedTier } }));
     showTab("verify");
   });
   $("#use-arena-model").addEventListener("click", () => {
-    applyTier("#arena-tier", $("#model-select").value);
+    window.dispatchEvent(new CustomEvent("clawreinforce:model-use", { detail: { target: "arena", tier: selectedTier } }));
     showTab("arena");
   });
   $("#use-improve-model").addEventListener("click", () => {
-    window.dispatchEvent(new CustomEvent("clawreinforce:model-use", { detail: { tier: $("#model-select").value } }));
+    window.dispatchEvent(new CustomEvent("clawreinforce:model-use", { detail: { target: "improve", tier: selectedTier } }));
     showTab("improve");
   });
   try {
