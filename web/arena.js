@@ -1,14 +1,19 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
 import { loadHistory } from "/arena_history.js";
-import { renderModelChoices } from "/model-picker.js";
+import { loadModelCatalog } from "/model-catalog.js";
+import { renderModelChoices, selectionSummary } from "/model-picker.js";
 
 let currentRun = null;
 let stream = null;
 let modelCatalog = [];
 let selectedTiers = new Set();
+let modelSelectionTouched = false;
 
 
 function renderModels(preferred = "") {
+  if (!modelSelectionTouched && preferred && modelCatalog.some((row) => row.tier === preferred)) {
+    selectedTiers = new Set([preferred]);
+  }
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
   if (!selectedTiers.size && modelCatalog.length) {
@@ -17,10 +22,11 @@ function renderModels(preferred = "") {
   renderModelChoices($("#arena-tiers"), modelCatalog, selectedTiers, {
     filter: $("#arena-model-filter").value,
     name: "arena-tier",
-    onChange: (next) => { selectedTiers = next; renderModels(); },
+    onChange: (next) => { modelSelectionTouched = true; selectedTiers = next; renderModels(); },
   });
-  $("#arena-selection-note").textContent = `${selectedTiers.size} model(s) selected · ${$("#arena-trials").value} trial(s) per model.`;
-  setStatus($("#arena-model-status"), selectedTiers.size ? `${selectedTiers.size} SELECTED` : "CHOOSE MODELS", selectedTiers.size ? "good" : "warn");
+  const selected = selectionSummary(modelCatalog, selectedTiers);
+  $("#arena-selection-note").textContent = `${selected} selected · ${$("#arena-trials").value} trial(s) per selection.`;
+  setStatus($("#arena-model-status"), selectedTiers.size ? `${selected.toUpperCase()} SELECTED` : "CHOOSE LLMS", selectedTiers.size ? "good" : "warn");
 }
 
 
@@ -239,13 +245,13 @@ function options(rows, label) {
 
 async function loadPickers() {
   try {
-    const [taskData, skillData, modelData] = await Promise.all([api("/api/tasks"), api("/api/skills"), api("/api/models")]);
+    const [taskData, skillData, modelData] = await Promise.all([api("/api/tasks"), api("/api/skills"), loadModelCatalog()]);
     $("#arena-task-picker").replaceChildren(...options(taskData.tasks, (row) => `${row.difficulty} · ${row.name}${row.gradeable ? "" : " · ungraded"}`));
     $("#arena-skill-picker").replaceChildren(...options(skillData.skills, (row) => row.name));
     modelCatalog = modelData.models;
     const task = taskData.tasks.find((row) => row.source === "examples/uppercase-task") || taskData.tasks[0];
     const skill = skillData.skills.find((row) => row.source === "examples/uppercase-skill") || skillData.skills[0];
-    const tier = modelData.models.find((row) => row.tier === "fixture:upper-if-skilled") || modelData.models[0];
+    const tier = modelData.models.find((row) => row.tier === modelData.preset) || modelData.models[0];
     if (!task || !skill || !tier) throw { code: "arena.pickers_empty", kind: "unavailable", message: "Task, skill, or tier catalog is empty.", context: {} };
     $("#arena-task-picker").value = task.source;
     $("#arena-task").value = task.source;
@@ -267,7 +273,7 @@ export function initArena() {
   $("#arena-trials").addEventListener("input", () => renderModels());
   window.addEventListener("clawreinforce:models", (event) => {
     modelCatalog = event.detail.models || [];
-    renderModels();
+    renderModels(event.detail.preset);
   });
   window.addEventListener("clawreinforce:model-use", (event) => {
     if (event.detail.target !== "arena") return;

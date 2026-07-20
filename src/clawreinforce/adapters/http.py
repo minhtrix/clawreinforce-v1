@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -10,6 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from clawreinforce.adapters.providers import ProviderHub
+from clawreinforce.adapters.model_catalog import ModelCatalog
 from clawreinforce.adapters.run_broker import RunBroker
 from clawreinforce.adapters.http_arena import BenchManager, task_catalog
 from clawreinforce.adapters.http_improve import improve_source
@@ -31,46 +31,15 @@ class AppState:
         self.project_root = project_root.resolve()
         self.web_root = web_root.resolve()
         self.providers = ProviderHub(self.project_root)
+        self.models = ModelCatalog(self.providers)
         self.runs = RunBroker()
         self.bench = BenchManager(self.project_root, self.providers, self.runs)
-        self._model_cache: tuple[float, dict[str, Any]] | None = None
 
-    def model_catalog(self, refresh: bool = False) -> dict[str, Any]:
-        if self._model_cache and not refresh and time.monotonic() - self._model_cache[0] < 300:
-            return self._model_cache[1]
-        providers = self.providers.status()
-        models: list[dict[str, str]] = []
-        for row in providers:
-            row["models"] = []
-            if row["provider"] == "fixture":
-                row["models"] = ["echo", "upper-if-skilled"]
-                models.extend(
-                    {"provider": "fixture", "model": model, "tier": f"fixture:{model}"}
-                    for model in row["models"]
-                )
-        preset = next(
-            (model["tier"] for model in models if model["tier"] == "openai:gpt-5.6-sol"),
-            next((model["tier"] for model in models if model["provider"] == "ollama-cloud"), "fixture:echo"),
-        )
-        payload = {"providers": providers, "models": models, "preset": preset}
-        self._model_cache = (time.monotonic(), payload)
-        return payload
+    def model_catalog(self, refresh: bool = False, auto_discover: bool = False) -> dict[str, Any]:
+        return self.models.catalog(auto_discover=refresh or auto_discover)
 
     def discover_provider(self, provider: str) -> dict[str, Any]:
-        catalog = self.model_catalog()
-        row = next((item for item in catalog["providers"] if item["provider"] == provider), None)
-        if row is None:
-            raise ClawError("provider.unknown", "validation", f"unknown provider: {provider}", provider=provider)
-        result = self.providers.discover(provider)
-        discovered = json.loads(result.output) if result.status == "completed" and result.output else []
-        row["models"] = discovered
-        row["last_error"] = result.error
-        catalog["models"] = [item for item in catalog["models"] if item["provider"] != provider]
-        catalog["models"].extend(
-            {"provider": provider, "model": model, "tier": f"{provider}:{model}"}
-            for model in discovered
-        )
-        return {"discovery": {"provider": provider, "status": result.status, "error": result.error}, **catalog}
+        return self.models.discover(provider)
 
 def _error(exc: Exception) -> dict[str, Any]:
     if isinstance(exc, ClawError):
@@ -119,7 +88,8 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                 elif path == "/api/improve/status":
                     self._json(improve_status())
                 elif path == "/api/models":
-                    self._json(app.model_catalog("refresh=1" in parsed.query))
+                    auto = "discover=configured" in parsed.query
+                    self._json(app.model_catalog("refresh=1" in parsed.query, auto))
                 elif path == "/api/history":
                     self._json({
                         "bench_runs": read_events(app.project_root, "bench-runs"),

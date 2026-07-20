@@ -1,4 +1,5 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { adoptModelCatalog, loadModelCatalog } from "/model-catalog.js";
 import { renderModelChoices } from "/model-picker.js";
 
 let catalog = { providers: [], models: [], preset: "" };
@@ -83,7 +84,7 @@ async function discover(provider) {
       method: "POST",
       body: JSON.stringify({ provider }),
     });
-    catalog = result;
+    catalog = adoptModelCatalog(result);
     publishCatalog();
     renderPicker($("#model-filter").value);
     renderRows($("#model-filter").value);
@@ -163,11 +164,11 @@ export async function initModels(showTab) {
     showTab("improve");
   });
   try {
-    catalog = await api("/api/models");
+    catalog = await loadModelCatalog();
     publishCatalog();
     renderPicker();
     renderRows();
-    setStatus($("#models-status"), "READY", "good");
+    setStatus($("#models-status"), `${catalog.llm_count || 0} LLMS READY`, catalog.llm_count ? "good" : "warn");
   } catch (failure) {
     renderError($("#models-error"), failure);
     $("#provider-rows").innerHTML = '<tr><td colspan="6" class="empty">Start the server, then reload to read provider status.</td></tr>';

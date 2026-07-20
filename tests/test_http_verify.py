@@ -8,6 +8,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from clawreinforce.adapters.http import AppState, make_handler
+from clawreinforce.core.models import ProviderResult
 
 
 ROOT = Path(__file__).parents[1]
@@ -235,14 +236,45 @@ def test_initial_model_catalog_never_calls_remote_discovery(tmp_path: Path) -> N
     app.providers.discover = unexpected
     catalog = app.model_catalog()
     assert catalog["models"] == [
-        {"provider": "fixture", "model": "echo", "tier": "fixture:echo"},
-        {"provider": "fixture", "model": "upper-if-skilled", "tier": "fixture:upper-if-skilled"},
+        {"provider": "fixture", "model": "echo", "tier": "fixture:echo", "kind": "fixture"},
+        {"provider": "fixture", "model": "upper-if-skilled", "tier": "fixture:upper-if-skilled", "kind": "fixture"},
     ]
+    assert catalog["llm_count"] == 0
     with api_server(tmp_path) as base:
         with urllib.request.urlopen(base + "/api/models", timeout=5) as response:
             assert response.headers["Cache-Control"] == "no-store"
         with urllib.request.urlopen(base + "/", timeout=5) as response:
             assert response.headers["Cache-Control"] == "no-cache"
+
+
+def test_configured_remote_llms_are_auto_discovered_and_session_cached(tmp_path: Path, monkeypatch) -> None:
+    for name in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OLLAMA_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    store = tmp_path / ".clawreinforce"
+    store.mkdir()
+    (store / "providers.json").write_text(
+        json.dumps({"ollama-cloud": {"api_key": "test-key"}}),
+        encoding="utf-8",
+    )
+    app = AppState(tmp_path, ROOT / "web")
+    calls: list[str] = []
+
+    def discover(provider: str) -> ProviderResult:
+        calls.append(provider)
+        return ProviderResult("completed", output=json.dumps(["model-b", "model-a"]))
+
+    app.providers.discover = discover
+    catalog = app.model_catalog(auto_discover=True)
+    assert calls == ["ollama-cloud"]
+    assert [row["tier"] for row in catalog["models"] if row["kind"] == "llm"] == [
+        "ollama-cloud:model-b",
+        "ollama-cloud:model-a",
+    ]
+    assert catalog["preset"] == "ollama-cloud:model-b"
+    assert catalog["llm_count"] == 2
+    cached = app.model_catalog()
+    assert cached["llm_count"] == 2
+    assert calls == ["ollama-cloud"]
 
 
 def test_unknown_model_provider_error_is_structured(tmp_path: Path) -> None:

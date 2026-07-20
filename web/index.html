@@ -36,8 +36,8 @@
           <select id="verify-skill"><option value="">Loading example skills…</option></select>
           <label for="verify-source">Skill path, GitHub URL, or ClawHub slug</label>
           <input id="verify-source" autocomplete="off" placeholder="examples/uppercase-skill or owner/skills/slug">
-          <label for="verify-model-filter">Certification models <small>every selected model runs every declared case</small></label>
-          <input id="verify-model-filter" type="search" placeholder="Filter providers or models">
+          <label for="verify-model-filter">Certification LLMs <small>click to select · every selected LLM runs every declared case</small></label>
+          <input id="verify-model-filter" type="search" placeholder="Optional: filter the loaded LLMs">
           <div id="verify-tiers" class="model-choice-groups"><p class="empty-state">Loading model tiers…</p></div>
           <small id="verify-selection-note">Choose at least one model. Guard uses the same selection.</small>
           <label for="verify-samples">Samples per golden case</label>
@@ -100,8 +100,8 @@
       <section class="workflow-model-panel" aria-labelledby="improve-model-title">
         <div class="result-heading"><span id="improve-model-title">1 · Select model roles</span><span class="status neutral" id="improve-model-status">LOADING</span></div>
         <p class="workflow-model-intro">The <strong>Author / Breaker</strong> proposes one candidate. Every selected <strong>Gate model</strong> independently re-runs every golden case and can reject it.</p>
-        <label for="improve-model-filter">Filter the available provider catalog</label>
-        <input id="improve-model-filter" type="search" placeholder="Filter providers or models">
+        <label for="improve-model-filter">Available LLMs <small>click to select · filtering is optional</small></label>
+        <input id="improve-model-filter" type="search" placeholder="Optional: filter the loaded LLMs">
         <div class="model-role-grid">
           <div class="model-role-card"><span class="model-role-label">AUTHOR / BREAKER · choose exactly one</span><p>Creates rewrites and adversarial trap candidates. Its opinion never decides acceptance.</p><div id="improve-author-tiers" class="model-choice-groups"><p class="empty-state">Loading author models…</p></div></div>
           <div class="model-role-card"><span class="model-role-label">GATE / FOCUS · choose one or more</span><p>Measures baseline and candidate. A rewrite survives only when its target turns green with zero regressions.</p><div id="improve-gate-tiers" class="model-choice-groups"><p class="empty-state">Loading gate models…</p></div></div>
@@ -198,7 +198,7 @@
       <section class="workflow-model-panel" aria-labelledby="arena-model-title">
         <div class="result-heading"><span id="arena-model-title">1 · Select executor models</span><span class="status neutral" id="arena-model-status">LOADING</span></div>
         <p class="workflow-model-intro">Every selected model runs the same task without and with the skill. This makes uplift comparable per model instead of hiding it behind one default tier.</p>
-        <label for="arena-model-filter">Filter the available provider catalog</label><input id="arena-model-filter" type="search" placeholder="Filter providers or models">
+        <label for="arena-model-filter">Available LLMs <small>click to select · filtering is optional</small></label><input id="arena-model-filter" type="search" placeholder="Optional: filter the loaded LLMs">
         <div id="arena-tiers" class="model-choice-groups"><p class="empty-state">Loading model tiers…</p></div>
         <small id="arena-selection-note">Choose at least one model. Trials apply to every selection.</small>
       </section>
@@ -254,10 +254,10 @@
       <div class="hero-copy compact">
         <p class="eyebrow">PROVIDER HUB</p>
         <h1 id="models-title">Every provider exposes what is configured—and what failed.</h1>
-        <p>Built-in and session-cached models load immediately. Use a row’s Discover action to contact only that provider.</p>
+        <p>Configured remote LLMs load automatically. Fixtures are deterministic test doubles, not models; Discover refreshes one provider.</p>
       </div>
       <div class="model-toolbar">
-        <input id="model-filter" type="search" placeholder="Filter providers or models">
+        <input id="model-filter" type="search" placeholder="Optional: filter loaded LLMs or providers">
       </div>
       <div class="model-picker">
         <label>Discovered model tiers <small>choose one, then send it into a workflow</small></label>

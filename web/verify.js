@@ -1,11 +1,16 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
-import { renderModelChoices } from "/model-picker.js";
+import { loadModelCatalog } from "/model-catalog.js";
+import { renderModelChoices, selectionSummary } from "/model-picker.js";
 
 let currentCertificate = null;
 let modelCatalog = [];
 let selectedTiers = new Set();
+let modelSelectionTouched = false;
 
 function renderModels(preferred = "") {
+  if (!modelSelectionTouched && preferred && modelCatalog.some((row) => row.tier === preferred)) {
+    selectedTiers = new Set([preferred]);
+  }
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
   if (!selectedTiers.size && modelCatalog.length) {
@@ -14,9 +19,9 @@ function renderModels(preferred = "") {
   renderModelChoices($("#verify-tiers"), modelCatalog, selectedTiers, {
     filter: $("#verify-model-filter").value,
     name: "verify-tier",
-    onChange: (next) => { selectedTiers = next; renderModels(); },
+    onChange: (next) => { modelSelectionTouched = true; selectedTiers = next; renderModels(); },
   });
-  $("#verify-selection-note").textContent = `${selectedTiers.size} model(s) selected · Certify and Guard use this same set.`;
+  $("#verify-selection-note").textContent = `${selectionSummary(modelCatalog, selectedTiers)} selected · Certify and Guard use this same set.`;
 }
 
 function emptyRow(message) {
@@ -150,7 +155,7 @@ async function runGuard() {
 
 async function loadPickers() {
   try {
-    const [skillData, modelData] = await Promise.all([api("/api/skills"), api("/api/models")]);
+    const [skillData, modelData] = await Promise.all([api("/api/skills"), loadModelCatalog()]);
     const skills = skillData.skills.map((skill) => {
       const option = document.createElement("option");
       option.value = skill.source;
@@ -161,7 +166,7 @@ async function loadPickers() {
     const preferred = skillData.skills.find((skill) => skill.source === "examples/uppercase-skill");
     if (preferred) $("#verify-skill").value = preferred.source;
     modelCatalog = modelData.models;
-    renderModels(modelData.models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier || modelData.preset);
+    renderModels(modelData.preset);
     if (skills.length) {
       $("#verify-source").value = $("#verify-skill").value;
       $("#guard-source").value = $("#verify-skill").value;
@@ -183,7 +188,7 @@ export function initVerify() {
   $("#verify-model-filter").addEventListener("input", () => renderModels());
   window.addEventListener("clawreinforce:models", (event) => {
     modelCatalog = event.detail.models || [];
-    renderModels();
+    renderModels(event.detail.preset);
   });
   window.addEventListener("clawreinforce:model-use", (event) => {
     if (event.detail.target !== "verify") return;

@@ -53,8 +53,12 @@ export function renderModelChoices(container, models, selected, options = {}) {
     const summary = document.createElement("summary");
     const choices = document.createElement("div");
     const selectedCount = rows.filter((row) => selected.has(row.tier)).length;
-    group.open = Boolean(selectedCount) || groups.length <= 2;
-    summary.textContent = `${provider} · ${selectedCount}/${rows.length} selected`;
+    const fixture = provider === "fixture";
+    group.className = fixture ? "fixture-model-group" : "llm-model-group";
+    group.open = Boolean(selectedCount) || (!fixture && groups.filter((item) => item.provider !== "fixture").length <= 2);
+    summary.textContent = fixture
+      ? `TEST FIXTURES · NOT LLMS · ${selectedCount}/${rows.length} selected`
+      : `${provider} · ${rows.length} LLM${rows.length === 1 ? "" : "S"} · ${selectedCount} selected`;
     choices.className = "model-choice-list";
     group.append(summary, choices);
     rows.forEach((row) => {
@@ -68,7 +72,7 @@ export function renderModelChoices(container, models, selected, options = {}) {
       const model = document.createElement("strong");
       const tier = document.createElement("small");
       model.textContent = row.model;
-      tier.textContent = row.tier;
+      tier.textContent = fixture ? `${row.tier} · deterministic test double` : row.tier;
       text.append(model, tier);
       input.addEventListener("change", () => {
         onChange(updateSelection(selected, row.tier, input.checked, multiple));
@@ -79,6 +83,17 @@ export function renderModelChoices(container, models, selected, options = {}) {
     return group;
   });
   container.replaceChildren(...nodes);
+}
+
+
+export function selectionSummary(models, selected) {
+  const chosen = models.filter((row) => selected.has(row.tier));
+  const llms = chosen.filter((row) => row.provider !== "fixture").length;
+  const fixtures = chosen.length - llms;
+  const parts = [];
+  if (llms) parts.push(`${llms} LLM${llms === 1 ? "" : "s"}`);
+  if (fixtures) parts.push(`${fixtures} test fixture${fixtures === 1 ? "" : "s"}`);
+  return parts.length ? parts.join(" + ") : "nothing";
 }
 
 

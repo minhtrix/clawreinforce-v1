@@ -1,11 +1,14 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
 import { beginHardenEvidence, initHardenEvidence, renderHardenEvidence } from "/harden-evidence.js";
-import { renderModelChoices } from "/model-picker.js";
+import { loadModelCatalog } from "/model-catalog.js";
+import { renderModelChoices, selectionSummary } from "/model-picker.js";
 
 
 let modelCatalog = [];
 let selectedGateTiers = new Set();
 let authorTier = "";
+let authorSelectionTouched = false;
+let gateSelectionTouched = false;
 
 
 function setPhase(name, state, message) {
@@ -145,17 +148,20 @@ async function runImprove() {
 function renderModelPickers(models, preferred = "") {
   modelCatalog = models;
   const available = new Set(models.map((model) => model.tier));
-  const initial = preferred || (available.has(authorTier) ? authorTier : "")
+  const initial = (!authorSelectionTouched && available.has(preferred) ? preferred : "") || (available.has(authorTier) ? authorTier : "")
     || models.find((model) => model.tier === "fixture:upper-if-skilled")?.tier || models[0]?.tier || "";
   authorTier = initial;
-  selectedGateTiers = new Set([...selectedGateTiers].filter((tier) => models.some((model) => model.tier === tier)));
-  if (!selectedGateTiers.size && authorTier) selectedGateTiers.add(authorTier);
+  selectedGateTiers = gateSelectionTouched
+    ? new Set([...selectedGateTiers].filter((tier) => models.some((model) => model.tier === tier)))
+    : new Set(authorTier ? [authorTier] : []);
+  if (!selectedGateTiers.size && authorTier && !gateSelectionTouched) selectedGateTiers.add(authorTier);
   const filter = $("#improve-model-filter").value;
   renderModelChoices($("#improve-author-tiers"), models, new Set(authorTier ? [authorTier] : []), {
     filter,
     multiple: false,
     name: "improve-author-tier",
     onChange: (next) => {
+      authorSelectionTouched = true;
       authorTier = [...next][0] || "";
       renderModelPickers(modelCatalog);
     },
@@ -164,24 +170,26 @@ function renderModelPickers(models, preferred = "") {
     filter,
     name: "improve-gate-tier",
     onChange: (next) => {
+      gateSelectionTouched = true;
       selectedGateTiers = next;
       renderModelPickers(modelCatalog);
     },
   });
-  $("#improve-selection-note").textContent = `Author: ${authorTier || "none"} · ${selectedGateTiers.size} gate model(s) · calls scale with models × cases × proposals.`;
+  const authorKind = authorTier.startsWith("fixture:") ? "test fixture" : "LLM";
+  $("#improve-selection-note").textContent = `Author: ${authorTier || "none"} (${authorKind}) · Gate: ${selectionSummary(modelCatalog, selectedGateTiers)} · calls scale with models × cases × proposals.`;
   setStatus($("#improve-model-status"), authorTier && selectedGateTiers.size ? `${1 + selectedGateTiers.size} ROLES SET` : "CHOOSE MODELS", authorTier && selectedGateTiers.size ? "good" : "warn");
   window.dispatchEvent(new CustomEvent("clawreinforce:improve-selection"));
 }
 
 
-function loadOptions(skills, models) {
+function loadOptions(skills, models, preset) {
   const skillPicker = $("#improve-skill");
   skillPicker.replaceChildren(...skills.map((skill) => new Option(`${skill.name} — ${skill.description}`, skill.source)));
   const preferred = skills.find((skill) => skill.name === "improvable-uppercase-skill") || skills[0];
   if (preferred) skillPicker.value = preferred.source;
   $("#improve-source").value = preferred?.source || "";
   skillPicker.addEventListener("change", () => { $("#improve-source").value = skillPicker.value; });
-  renderModelPickers(models);
+  renderModelPickers(models, preset);
 }
 
 
@@ -189,18 +197,18 @@ export async function initImprove() {
   initHardenEvidence();
   $("#improve-button").addEventListener("click", runImprove);
   $("#improve-model-filter").addEventListener("input", () => renderModelPickers(modelCatalog));
-  window.addEventListener("clawreinforce:models", (event) => renderModelPickers(event.detail.models || []));
+  window.addEventListener("clawreinforce:models", (event) => renderModelPickers(event.detail.models || [], event.detail.preset));
   window.addEventListener("clawreinforce:model-use", (event) => {
     if (event.detail.target !== "improve") return;
     const tier = event.detail.tier;
     renderModelPickers(modelCatalog, tier);
   });
   try {
-    const [status, skillData, modelData] = await Promise.all([api("/api/improve/status"), api("/api/skills"), api("/api/models")]);
+    const [status, skillData, modelData] = await Promise.all([api("/api/improve/status"), api("/api/skills"), loadModelCatalog()]);
     $("#improve-explanation").textContent = status.explanation;
     $("#improve-gates").replaceChildren(...status.gates.map(gateItem));
     setStatus($("#improve-capability"), status.orchestrator.available ? "LOOP READY" : "UNAVAILABLE", status.orchestrator.available ? "good" : "warn");
-    loadOptions(skillData.skills, modelData.models);
+    loadOptions(skillData.skills, modelData.models, modelData.preset);
   } catch (failure) {
     $("#improve-explanation").textContent = "Improve could not load its API state. Start the server, then reload this tab.";
     setStatus($("#improve-capability"), "ERROR", "bad");
