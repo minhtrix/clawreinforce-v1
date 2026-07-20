@@ -26,7 +26,9 @@ function renderModels(preferred = "") {
     onChange: (next) => { modelSelectionTouched = true; selectedTiers = next; renderModels(); },
   });
   const selected = selectionSummary(modelCatalog, selectedTiers);
-  $("#arena-selection-note").textContent = `${selected} selected · ${$("#arena-trials").value} trial(s) per selection.`;
+  const trials = Number($("#arena-trials").value);
+  const calls = selectedTiers.size * trials * 2;
+  $("#arena-selection-note").textContent = `${selected} selected · ${trials} trial(s) · ${calls} expected provider calls (without + with skill).`;
   setStatus($("#arena-model-status"), selectedTiers.size ? `${selected.toUpperCase()} SELECTED` : "CHOOSE LLMS", selectedTiers.size ? "good" : "warn");
 }
 
