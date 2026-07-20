@@ -187,6 +187,7 @@ function renderModelPickers(models, preferred = "") {
     },
   });
   $("#improve-selection-note").textContent = `Author: ${authorTier || "none"} · ${selectedGateTiers.size} gate model(s) · calls scale with models × cases × proposals.`;
+  window.dispatchEvent(new CustomEvent("clawreinforce:improve-selection"));
 }
 
 

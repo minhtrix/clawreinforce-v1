@@ -3,6 +3,7 @@ import { initVerify } from "/verify.js";
 import { initImprove } from "/improve.js";
 import { initArena } from "/arena.js";
 import { initModels } from "/models.js";
+import { initTraps } from "/traps.js";
 
 function showTab(name) {
   $$(".tab").forEach((button) => {
@@ -26,3 +27,4 @@ initVerify();
 initImprove();
 initArena();
 initModels(showTab);
+initTraps();

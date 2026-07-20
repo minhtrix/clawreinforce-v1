@@ -18,7 +18,7 @@
 
   <nav class="tabs" aria-label="Product areas">
     <button class="tab active" data-tab="verify" aria-selected="true">Verify <small>scan · certify · guard</small></button>
-    <button class="tab" data-tab="improve" aria-selected="false">Improve <small>golden loop</small></button>
+    <button class="tab" data-tab="improve" aria-selected="false">Improve <small>rewrite · traps</small></button>
     <button class="tab" data-tab="arena" aria-selected="false">Arena <small>bench · uplift</small></button>
     <button class="tab" data-tab="models" aria-selected="false">Models <small>provider hub</small></button>
   </nav>
@@ -115,7 +115,10 @@
           <label for="improve-max">Maximum rewrites</label>
           <input id="improve-max" type="number" min="1" max="20" value="3">
           <label class="checkbox-row"><input id="improve-apply" type="checkbox"><span>Write the accepted body to SKILL.md</span></label>
-          <button class="primary" id="improve-button">Run deterministic improve</button>
+          <div class="actions">
+            <button class="primary" id="improve-button">Run deterministic improve</button>
+            <button class="secondary" id="show-traps-button">Open adversarial traps</button>
+          </div>
           <pre class="structured-error" id="improve-error" hidden></pre>
         </section>
         <section class="result-shell" aria-live="polite">
@@ -139,6 +142,36 @@
           <div class="evidence-section"><h2>Gate reasons</h2><ol class="attempt-list" id="improve-attempts"><li class="empty-state">Each proposal will show its target, verdict, regressions, and verified examples.</li></ol></div>
         </section>
       </div>
+      <section class="trap-workbench" id="trap-workbench" aria-labelledby="trap-title">
+        <div class="result-heading"><span id="trap-title">Adversarial trap lab</span><span class="status neutral" id="trap-status">READY</span></div>
+        <div class="trap-layout">
+          <div class="trap-controls form-stack">
+            <p>Use the selected Author as breaker and every selected Gate model as an independent target. Breaker rationales are hypotheses; actual outputs and deterministic checks are evidence.</p>
+            <code id="trap-model-context">Choose an author and gate model above.</code>
+            <label for="trap-max">Maximum trap candidates</label>
+            <input id="trap-max" type="number" min="1" max="20" value="3">
+            <button class="primary" id="trap-run-button">Invent and run traps</button>
+            <pre class="structured-error" id="trap-error" hidden></pre>
+          </div>
+          <div class="trap-summary" aria-live="polite">
+            <div class="trap-metrics">
+              <article><small>CHECKED</small><strong id="trap-checked">—</strong></article>
+              <article><small>TEAR NOW</small><strong id="trap-failing">—</strong></article>
+              <article><small>MODEL × TRAP FAILS</small><strong id="trap-failures">—</strong></article>
+            </div>
+            <table><thead><tr><th>Gate model</th><th>Passed</th><th>Coverage</th><th>Reason</th></tr></thead><tbody id="trap-model-rows"><tr><td colspan="4" class="empty-state">Run traps to compare selected gate models.</td></tr></tbody></table>
+            <small id="trap-usage">Calls and tokens appear after a trap run.</small>
+            <div class="file-truth" id="trap-file-truth"><small>FILE TRUTH</small><code>unchanged · no traps frozen</code></div>
+          </div>
+        </div>
+        <div id="trap-rejected"></div>
+        <div class="trap-cards" id="trap-cards"><p class="empty-state">Run the breaker. Each checkable candidate will show expected behavior, actual output, and a per-model reason.</p></div>
+        <div class="trap-freeze-bar">
+          <label class="checkbox-row"><input id="trap-reviewed" type="checkbox"><span>I reviewed every selected expected behavior; freeze it as future certification evidence.</span></label>
+          <small id="trap-freeze-note">Select one or more failing trap cards after a run.</small>
+          <button class="secondary" id="trap-freeze-button" disabled>Freeze selected regressions</button>
+        </div>
+      </section>
       <section class="improve-state" aria-label="Acceptance contract">
         <div class="result-heading"><span>Acceptance contract</span><span class="status neutral" id="improve-capability">CHECKING API</span></div>
         <p class="improve-explanation" id="improve-explanation">Reading the implemented gate state from the API…</p>
