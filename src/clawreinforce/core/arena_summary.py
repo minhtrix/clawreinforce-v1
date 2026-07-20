@@ -9,7 +9,7 @@ def summarize_arena(rows: Iterable[Any], tiers: list[str], trials: int) -> dict[
     per_model = [_model_summary(tier, [row for row in values if row.tier == tier], trials) for tier in tiers]
     before = [row.without_skill for row in values if row.without_skill is not None]
     after = [row.with_skill for row in values if row.with_skill is not None]
-    comparable = [row for row in per_model if row["without_rate"] is not None and row["with_rate"] is not None]
+    comparable = [row for row in per_model if row["outcome"] in {"improved", "regressed", "unchanged"}]
     return {
         "without_skill": _mean(before),
         "with_skill": _mean(after),
@@ -41,7 +41,12 @@ def _model_summary(tier: str, rows: list[Any], trials: int) -> dict[str, Any]:
     without = [row.without_skill for row in rows if row.without_skill is not None]
     equipped = [row.with_skill for row in rows if row.with_skill is not None]
     before_rate, after_rate = _mean(without), _mean(equipped)
-    if before_rate is None or after_rate is None:
+    complete = len(without) == trials and len(equipped) == trials
+    if before_rate is None and after_rate is None:
+        outcome = "ungraded"
+    elif not complete:
+        outcome = "partial"
+    elif before_rate is None or after_rate is None:
         outcome = "ungraded"
     elif after_rate > before_rate:
         outcome = "improved"
@@ -50,6 +55,10 @@ def _model_summary(tier: str, rows: list[Any], trials: int) -> dict[str, Any]:
     else:
         outcome = "unchanged"
     reason = next((row.reason or row.last_error for row in reversed(rows) if row.reason or row.last_error), None)
+    if reason is None and outcome == "partial":
+        reason = f"partial: completed {min(len(without), len(equipped))}/{trials} planned trial pairs"
+    if reason is None and outcome == "ungraded":
+        reason = "ungraded: no complete trial pair produced a score"
     return {
         "tier": tier,
         "without_rate": before_rate,

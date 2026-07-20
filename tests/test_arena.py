@@ -66,6 +66,10 @@ def test_cancel_keeps_partial_results() -> None:
     report = run_bench(task, skill, ["fixture:upper-if-skilled"], 3, _executor, is_cancelled=cancelled)
     assert report.cancelled
     assert len(report.rows) == 1
+    assert report.summary["comparison"]["graded_models"] == 0
+    assert report.summary["comparison"]["solved_with"] == 0
+    assert report.summary["per_model"][0]["outcome"] == "partial"
+    assert report.summary["per_model"][0]["reason"] == "partial: completed 1/3 planned trial pairs"
 
 
 def test_ungraded_row_explains_unsupported_container_verifier() -> None:
