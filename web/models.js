@@ -21,8 +21,10 @@ function renderPicker(filter = "") {
   const query = filter.toLowerCase();
   const rows = catalog.models.filter((row) => `${row.provider} ${row.model} ${row.tier}`.toLowerCase().includes(query));
   if (!catalog.models.some((row) => row.tier === selectedTier)) {
-    selectedTier = catalog.models.find((row) => row.tier === "fixture:upper-if-skilled")?.tier
-      || catalog.preset || catalog.models[0]?.tier || "";
+    selectedTier = catalog.preset
+      || catalog.models.find((row) => row.provider !== "fixture")?.tier
+      || catalog.models.find((row) => row.tier === "fixture:upper-if-skilled")?.tier
+      || catalog.models[0]?.tier || "";
   }
   renderModelChoices($("#model-choices"), catalog.models, new Set(selectedTier ? [selectedTier] : []), {
     filter,
