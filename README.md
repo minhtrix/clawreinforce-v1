@@ -31,6 +31,8 @@ Improve is dry-run by default: the selected tier grades every golden case, propo
 
 The GUI separates one **author model** from any number of **gate models**. The author only proposes; every gate model re-runs every golden case, and a previously green model × case regression blocks the candidate. Improve reports one completion per pair and points to Arena trials when statistical confidence is required.
 
+The same tab includes an adversarial **Trap Lab**. The selected author becomes the breaker, every selected gate model executes each safe deterministic candidate, and the result shows the expected check, actual output, and failure reason per model. Breaker rationales remain explicitly untrusted hypotheses. Nothing is persisted by default: only individually selected, human-reviewed failures can be appended to `.clawreinforce/regressions.jsonl`; frozen traps become certification cases and change the skill fingerprint.
+
 ```console
 $ clawreinforce improve examples/improvable-uppercase-skill --tier fixture:upper-if-skilled --strategy fewshot --max-rewrites 3
 ```
@@ -43,7 +45,7 @@ $ clawreinforce improve examples/improvable-uppercase-skill --tier fixture:upper
 $ clawreinforce serve --project . --host 127.0.0.1 --port 8788
 ```
 
-Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Long Arena runs stream rows and progress over Server-Sent Events.
+Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Every workflow uses the same filterable, provider-grouped model picker; Verify and Arena accept multiple models, while Improve separates one Author / Breaker from any number of Gate models. Long Arena runs stream rows and progress over Server-Sent Events.
 
 ## How Codex was used
 
