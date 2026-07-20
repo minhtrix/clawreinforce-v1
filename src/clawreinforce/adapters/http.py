@@ -13,6 +13,7 @@ from clawreinforce.adapters.providers import ProviderHub
 from clawreinforce.adapters.run_broker import RunBroker
 from clawreinforce.adapters.http_arena import BenchManager, task_catalog
 from clawreinforce.adapters.http_improve import improve_source
+from clawreinforce.adapters.http_traps import discover_traps_source, freeze_traps_source
 from clawreinforce.adapters.http_verify import (
     certify_source,
     check_certificate,
@@ -188,6 +189,27 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                             app.providers.execute,
                             author_tier=author_tier,
                             gate_tiers=list(raw_gates) if isinstance(raw_gates, list) else None,
+                        )
+                    )
+                elif path == "/api/traps":
+                    self._json(
+                        discover_traps_source(
+                            app.project_root,
+                            str(payload.get("source", "")),
+                            str(payload.get("breaker_tier", "")),
+                            list(payload.get("gate_tiers") or []),
+                            int(payload.get("max_traps", 10)),
+                            app.providers.execute,
+                        )
+                    )
+                elif path == "/api/traps/freeze":
+                    raw_candidates = payload.get("candidates")
+                    self._json(
+                        freeze_traps_source(
+                            app.project_root,
+                            str(payload.get("source", "")),
+                            list(raw_candidates) if isinstance(raw_candidates, list) else [],
+                            bool(payload.get("reviewed")),
                         )
                     )
                 elif path == "/api/improve/gate":

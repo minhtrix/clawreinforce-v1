@@ -187,6 +187,27 @@ def _responses_text(items: list[dict[str, Any]]) -> str:
 
 
 def _fixture_upper(system: str, user: str) -> str:
+    if "CLAWREINFORCE_ADVERSARIAL_TRAPS" in system:
+        limit_match = re.search(r"at most (\d+)", system)
+        limit = int(limit_match.group(1)) if limit_match else 3
+        candidates = [
+            {
+                "input": "hello world",
+                "check": {"kind": "equals", "value": "HELLO WORLD"},
+                "rationale": "Exercise spaces and lowercase conversion promised by the skill.",
+            },
+            {
+                "input": "MiXeD-123",
+                "check": {"kind": "equals", "value": "MIXED-123"},
+                "rationale": "Exercise mixed case while preserving punctuation and digits.",
+            },
+            {
+                "input": "",
+                "check": {"kind": "equals", "value": ""},
+                "rationale": "Exercise the empty-input boundary without inventing an error contract.",
+            },
+        ]
+        return json.dumps(candidates[:limit])
     if "CLAWREINFORCE_IMPROVE_INSTRUCT" in system:
         return "Return the supplied text in uppercase. Return only the converted text."
     if "CLAWREINFORCE_IMPROVE_FEWSHOT" in system:

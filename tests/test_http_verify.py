@@ -150,6 +150,45 @@ def test_improve_http_accepts_author_and_multiple_gate_models(tmp_path: Path) ->
     ]
 
 
+def test_traps_http_measures_then_freezes_only_reviewed_selection(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        report = request(
+            base,
+            "/api/traps",
+            {
+                "source": "examples/improvable-uppercase-skill",
+                "breaker_tier": "fixture:upper-if-skilled",
+                "gate_tiers": ["fixture:upper-if-skilled", "fixture:echo"],
+                "max_traps": 3,
+            },
+        )
+        selected = [item for item in report["candidates"] if item["tears_now"]]
+        frozen = request(
+            base,
+            "/api/traps/freeze",
+            {
+                "source": "examples/improvable-uppercase-skill",
+                "candidates": selected,
+                "reviewed": True,
+            },
+        )
+        certified = request(
+            base,
+            "/api/certify",
+            {
+                "source": "examples/improvable-uppercase-skill",
+                "tiers": ["fixture:upper-if-skilled"],
+                "samples": 1,
+            },
+        )
+
+    assert report["freeze_available"] is True
+    assert report["failing_candidates"] == 2
+    assert frozen["path"] == "examples/improvable-uppercase-skill/.clawreinforce/regressions.jsonl"
+    assert len(frozen["added"]) == 2
+    assert certified["report"]["tiers"][0]["coverage"]["expected"] == 3
+
+
 def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         result = request(base, "/api/models/discover", {"provider": "fixture"})

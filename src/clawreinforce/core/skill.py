@@ -25,14 +25,28 @@ def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 def _load_cases(root: Path) -> tuple[GoldenCase, ...]:
     candidates = (root / "cases.json", root / ".clawreinforce" / "cases.json")
     case_file = next((path for path in candidates if path.is_file()), None)
-    if case_file is None:
-        return ()
-    try:
-        raw: Any = json.loads(case_file.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise ClawError("cases.invalid", "validation", str(exc), path=str(case_file)) from exc
-    if not isinstance(raw, list):
-        raise ClawError("cases.shape", "validation", "cases.json must contain a list")
+    raw: list[Any] = []
+    if case_file is not None:
+        try:
+            parsed: Any = json.loads(case_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ClawError("cases.invalid", "validation", str(exc), path=str(case_file)) from exc
+        if not isinstance(parsed, list):
+            raise ClawError("cases.shape", "validation", "cases.json must contain a list")
+        raw.extend(parsed)
+    regression_file = root / ".clawreinforce" / "regressions.jsonl"
+    if regression_file.is_file():
+        for line_number, line in enumerate(regression_file.read_text(encoding="utf-8").splitlines(), 1):
+            try:
+                raw.append(json.loads(line))
+            except json.JSONDecodeError as exc:
+                raise ClawError(
+                    "cases.regression_invalid",
+                    "validation",
+                    "regressions.jsonl contains invalid JSON",
+                    path=str(regression_file),
+                    line=line_number,
+                ) from exc
     cases: list[GoldenCase] = []
     for index, item in enumerate(raw):
         try:
