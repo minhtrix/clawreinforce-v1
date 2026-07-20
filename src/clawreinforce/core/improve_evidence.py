@@ -49,6 +49,7 @@ def enrich_attempt(attempt: dict[str, Any], gate_tiers: list[str]) -> dict[str, 
             "baseline_score": baseline,
             "measured_score": measured,
             "delta_pp": None if baseline is None or measured is None else round((measured - baseline) * 100, 1),
+            "diagnosis": _model_diagnosis(baseline, measured),
         })
     baseline, measured = pass_rate(before), pass_rate(after)
     return {
@@ -100,3 +101,13 @@ def _for_tier(values: dict[str, bool], tier: str, sole_tier: bool) -> dict[str, 
     prefix = f"{tier} / "
     selected = {key[len(prefix):]: value for key, value in values.items() if key.startswith(prefix)}
     return selected or (values if sole_tier else {})
+
+
+def _model_diagnosis(before: float | None, after: float | None) -> str:
+    if before is None or after is None:
+        return "ungraded"
+    if after > before:
+        return "score increased"
+    if after < before:
+        return "model regression"
+    return "no measured gain"

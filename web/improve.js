@@ -1,4 +1,5 @@
 import { $, api, clearError, renderError, setStatus } from "/ui.js";
+import { beginHardenEvidence, initHardenEvidence, renderHardenEvidence } from "/harden-evidence.js";
 import { renderModelChoices } from "/model-picker.js";
 
 
@@ -89,21 +90,6 @@ function caseRow(caseId, before, after) {
 }
 
 
-function attemptItem(attempt) {
-  const item = document.createElement("li");
-  const heading = document.createElement("strong");
-  heading.textContent = `#${attempt.number} · ${attempt.target_case} · ${attempt.accepted ? "ACCEPT" : "REJECT"}`;
-  const reason = document.createElement("p");
-  reason.textContent = attempt.reason;
-  const detail = document.createElement("small");
-  const regressions = attempt.regressions.length ? attempt.regressions.join(", ") : "none";
-  detail.textContent = `regressions: ${regressions} · verified examples: ${attempt.verified_examples.length}`;
-  item.className = attempt.accepted ? "accepted" : "rejected";
-  item.append(heading, reason, detail);
-  return item;
-}
-
-
 function renderReport(result) {
   $("#improve-decision").textContent = result.reason;
   $("#improve-run-context").textContent = `Author: ${result.author_tier || result.tier} · Gate: ${(result.gate_tiers || [result.tier]).join(", ")}`;
@@ -115,12 +101,7 @@ function renderReport(result) {
   renderModelLine(result);
   renderUsage(result);
   $("#improve-cases").replaceChildren(...ids.map((id) => caseRow(id, result.before[id], result.after[id])));
-  $("#improve-diff").textContent = result.diff || "No accepted body change. Inspect the gate reasons below.";
-  if (result.attempts.length) {
-    $("#improve-attempts").replaceChildren(...result.attempts.map(attemptItem));
-  } else {
-    $("#improve-attempts").innerHTML = '<li class="empty-state">No rewrite was needed because every golden case was already green.</li>';
-  }
+  renderHardenEvidence(result);
   const tone = result.status === "completed" || result.status === "unchanged" ? "good" : result.status === "partial" ? "warn" : "bad";
   setStatus($("#improve-status"), result.status.toUpperCase(), tone);
 }
@@ -131,6 +112,7 @@ async function runImprove() {
   const button = $("#improve-button");
   button.disabled = true;
   runningPhases();
+  beginHardenEvidence();
   setStatus($("#improve-status"), "RUNNING", "neutral");
   try {
     if (!selectedGateTiers.size) {
@@ -204,6 +186,7 @@ function loadOptions(skills, models) {
 
 
 export async function initImprove() {
+  initHardenEvidence();
   $("#improve-button").addEventListener("click", runImprove);
   $("#improve-model-filter").addEventListener("input", () => renderModelPickers(modelCatalog));
   window.addEventListener("clawreinforce:models", (event) => renderModelPickers(event.detail.models || []));

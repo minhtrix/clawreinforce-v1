@@ -119,6 +119,7 @@ def test_improve_http_runs_dry_run_then_applies_accepted_body(tmp_path: Path) ->
         assert dry_run["write_state"] == "dry_run"
         assert dry_run["attempts"][0]["diagnosis"].startswith("target fixed")
         assert dry_run["attempts"][0]["models"][0]["delta_pp"] == 100.0
+        assert dry_run["attempts"][0]["models"][0]["diagnosis"] == "score increased"
         assert dry_run["learned_patterns"][0]["outcome"] == "helped"
         applied = request(
             base,
