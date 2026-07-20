@@ -107,6 +107,19 @@ def test_improve_http_runs_dry_run_then_applies_accepted_body(tmp_path: Path) ->
             },
         )
         assert skill_file.read_text(encoding="utf-8") == before
+        assert dry_run["metrics"] == {
+            "baseline_score": 0.0,
+            "best_score": 1.0,
+            "gain_pp": 100.0,
+            "accepted_iteration": 1,
+            "model_count": 1,
+            "check_count": 1,
+        }
+        assert dry_run["output_path"] == "examples/improvable-uppercase-skill/SKILL.md"
+        assert dry_run["write_state"] == "dry_run"
+        assert dry_run["attempts"][0]["diagnosis"].startswith("target fixed")
+        assert dry_run["attempts"][0]["models"][0]["delta_pp"] == 100.0
+        assert dry_run["learned_patterns"][0]["outcome"] == "helped"
         applied = request(
             base,
             "/api/improve",
@@ -118,12 +131,16 @@ def test_improve_http_runs_dry_run_then_applies_accepted_body(tmp_path: Path) ->
                 "apply": True,
             },
         )
+        history = request(base, "/api/history")
     assert status["status"] == "loop_ready"
     assert status["orchestrator"] == {"available": True, "message": "Golden rewrite loop available"}
     assert dry_run["status"] == "completed" and dry_run["accepted"]
     assert dry_run["diff"].startswith("--- SKILL.md:before")
     assert dry_run["attempts"][0]["reason"] == "target turned green and no prior pass regressed"
     assert applied["applied"]
+    assert applied["write_state"] == "applied"
+    assert len(applied["history"]) == 2
+    assert len(history["improve_runs"]) == 2
     assert "## Examples (verified)" in skill_file.read_text(encoding="utf-8")
 
 
