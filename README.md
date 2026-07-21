@@ -4,6 +4,10 @@
 
 clawreinforce is CI for agent skills. It fetches untrusted skill bundles, scans their instructions, certifies declared behavior with deterministic checks, compares model performance with and without a skill, and emits fingerprint-bound trust evidence instead of asking an LLM to judge another LLM.
 
+The key result is not another model score. It is a controlled comparison: the same model
+and task **without skill → with skill → measured uplift**, followed by a deterministic
+gate that can reject a plausible but regressive rewrite.
+
 ## 60-second quickstart — zero API keys
 
 The built-in fixture provider is deterministic and requires no account, network access, or secret:
@@ -24,6 +28,10 @@ bench    -> without_skill: 0.0, with_skill: 1.0, uplift: 1.0, coverage: 2/2
 ```
 
 Run the tests with `python -m pip install -e ".[dev]"` followed by `python -m pytest`.
+
+For judging or recording, [docs/DEMO.md](docs/DEMO.md) contains the executable
+three-minute path and [docs/SUBMISSION.md](docs/SUBMISSION.md) contains the verified
+submission copy, disclosure, and final access checklist.
 
 ## Improve a failing skill
 
@@ -48,6 +56,11 @@ $ clawreinforce serve --project . --host 127.0.0.1 --port 8788
 Open [http://127.0.0.1:8788](http://127.0.0.1:8788). The HTTP-only web client exposes four product areas: Verify, Improve, Arena, and Models. Configured remote providers are discovered once on load, so their real LLMs appear as provider-grouped click targets without typing; bulk-select handles large catalogs. Deterministic fixtures remain available in a separate **not LLMs** group. Verify and Arena accept multiple LLMs, while Improve separates one Author / Breaker from any number of Gate models.
 
 Long Arena runs stream raw trials over Server-Sent Events, then aggregate them per LLM into **without skill → with skill → uplift** lines. The summary counts improved, regressed, and fully solving models and reports Pass@1, Pass@k, Pass^k, a Wilson 95% interval, tokens, and cost when providers expose them.
+
+Supported platforms are Windows 10/11, macOS, and Linux with Python 3.11+ and a modern
+browser. The product server and web client require no Node runtime. Executable checks run
+in temporary subprocesses; use an isolated machine for untrusted code until a stronger
+sandbox backend is available.
 
 ## How Codex was used
 

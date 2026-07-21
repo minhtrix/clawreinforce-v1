@@ -2,23 +2,27 @@
 
 ## Setup before the timer
 
-From a fresh clone, install the editable package. No API key is needed for the deterministic path.
-
-```console
-python -m pip install -e .
-```
-
-Run the presenter script from the repository root:
+From a fresh clone, install the editable package. A virtual environment avoids PATH and
+package conflicts. No API key is needed for the deterministic path.
 
 ```powershell
-.\demo\demo.ps1
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-If Windows PowerShell blocks local scripts by policy, use a process-local bypass (it does not change the machine policy):
+```bash
+python -m venv .venv
+./.venv/bin/python -m pip install -e .
+```
+
+Run the presenter script from the repository root. The scripts prefer the clone-local
+virtual environment, so activation is not required.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\demo.ps1
 ```
+
+The process-local execution-policy bypass does not change the machine policy.
 
 ```bash
 ./demo/demo.sh
@@ -114,3 +118,25 @@ Finish before 3:00: “No agent should run a skill nobody verified.”
 ```
 
 Both scripts fail if certification is not 100%, uplift is not +1.0, or any expected artifact is missing.
+
+## Recording gate
+
+Do not record until this exact zero-key command exits successfully:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\demo\demo.ps1 -SkipLiveGuard -SkipOpenAIProbe -SkipServe
+```
+
+Then record one uninterrupted take at 1920×1080 or higher with browser zoom between
+90% and 110%. Keep secrets, provider configuration files, notifications, and unrelated
+tabs off screen. Show the command, the result, and the evidence artifact; do not scroll
+through implementation code.
+
+Before upload, verify:
+
+- duration is below 3:00 and narration is audible;
+- the video states the problem, measured uplift, deterministic gate, and limitation;
+- Codex and GPT-5.6 usage is described explicitly;
+- every displayed number matches the captured run;
+- the YouTube link is public or unlisted and opens in a signed-out browser;
+- no API key, local provider path, personal notification, or third-party music appears.

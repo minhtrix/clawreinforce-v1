@@ -20,7 +20,18 @@ done
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_root="$repo_root/demo-output"
 cd "$repo_root"
-command -v clawreinforce >/dev/null || { echo 'Install first: python -m pip install -e .' >&2; exit 1; }
+if [[ -x "$repo_root/.venv/bin/python" ]]; then
+  claw_cmd=("$repo_root/.venv/bin/python" -m clawreinforce)
+elif [[ -x "$repo_root/.venv/Scripts/python.exe" ]]; then
+  claw_cmd=("$repo_root/.venv/Scripts/python.exe" -m clawreinforce)
+elif command -v python >/dev/null && python -c 'import clawreinforce' >/dev/null 2>&1; then
+  claw_cmd=(python -m clawreinforce)
+elif command -v clawreinforce >/dev/null; then
+  claw_cmd=(clawreinforce)
+else
+  echo 'Install first: python -m pip install -e . (or install it in .venv).' >&2
+  exit 1
+fi
 if [[ ! -d "$output_root" ]]; then
   mkdir "$output_root"
 fi
@@ -33,7 +44,7 @@ capture_claw() {
   printf '\n' >&2
   set +e
   local output
-  output="$(clawreinforce "$@" 2>&1)"
+  output="$("${claw_cmd[@]}" "$@" 2>&1)"
   local status=$?
   set -e
   printf '%s\n' "$output" >&2
@@ -82,5 +93,5 @@ echo "Open http://127.0.0.1:$port and follow docs/DEMO.md."
 if ((skip_serve)); then
   echo 'SKIPPED (--skip-serve).'
 else
-  clawreinforce serve --project . --host 127.0.0.1 --port "$port"
+  "${claw_cmd[@]}" serve --project . --host 127.0.0.1 --port "$port"
 fi

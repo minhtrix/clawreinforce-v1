@@ -9,6 +9,23 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $outputRoot = Join-Path $repoRoot "demo-output"
+$localPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+$clawExecutable = $null
+$clawPrefix = @()
+
+if (Test-Path -LiteralPath $localPython) {
+    $clawExecutable = $localPython
+    $clawPrefix = @("-m", "clawreinforce")
+} elseif (Get-Command python -ErrorAction SilentlyContinue) {
+    & python -c "import clawreinforce" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $clawExecutable = (Get-Command python).Source
+        $clawPrefix = @("-m", "clawreinforce")
+    }
+}
+if (-not $clawExecutable -and (Get-Command clawreinforce -ErrorAction SilentlyContinue)) {
+    $clawExecutable = (Get-Command clawreinforce).Source
+}
 
 function Invoke-ClawJson {
     param(
@@ -16,7 +33,7 @@ function Invoke-ClawJson {
         [int[]]$AllowedExitCodes = @(0)
     )
     Write-Host "`n> clawreinforce $($Arguments -join ' ')" -ForegroundColor Cyan
-    $lines = & clawreinforce @Arguments 2>&1
+    $lines = & $clawExecutable @clawPrefix @Arguments 2>&1
     $exitCode = $LASTEXITCODE
     $text = $lines -join "`n"
     Write-Host $text
@@ -28,8 +45,8 @@ function Invoke-ClawJson {
 
 Push-Location $repoRoot
 try {
-    if (-not (Get-Command clawreinforce -ErrorAction SilentlyContinue)) {
-        throw 'clawreinforce is not installed. Run: python -m pip install -e .'
+    if (-not $clawExecutable) {
+        throw 'clawreinforce is not installed. Run: python -m pip install -e . (or install it in .venv).'
     }
     New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 
@@ -82,7 +99,7 @@ try {
     if ($SkipServe) {
         Write-Host "SKIPPED (--SkipServe)."
     } else {
-        & clawreinforce serve --project . --host 127.0.0.1 --port $Port
+        & $clawExecutable @clawPrefix serve --project . --host 127.0.0.1 --port $Port
         if ($LASTEXITCODE -ne 0) { throw "Server exited with $LASTEXITCODE" }
     }
 } finally {
