@@ -116,7 +116,8 @@ def test_default_registry_exposes_ready_and_key_missing_states(tmp_path: Path, m
     assert rows["ollama"]["state"] == "ready"
 
 
-def test_default_openai_tier_uses_responses_api_when_key_is_set(tmp_path: Path) -> None:
+def test_default_openai_tier_uses_responses_api_when_key_is_set(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     store = tmp_path / ".clawreinforce"
     store.mkdir()
     (store / "providers.json").write_text(json.dumps({"openai": {"api_key": "test-key"}}), encoding="utf-8")
@@ -126,4 +127,21 @@ def test_default_openai_tier_uses_responses_api_when_key_is_set(tmp_path: Path) 
     assert hub.request is not None
     assert hub.request[1] == "https://api.openai.com/v1/responses"
     assert hub.request[2]["model"] == "gpt-5.6-sol"
+    assert hub.request[2]["reasoning"] == {"effort": "low"}
+    assert hub.request[2]["text"] == {"verbosity": "low"}
     assert hub.request[3]["Authorization"] == "Bearer test-key"
+
+
+def test_openai_gpt4_omits_gpt5_only_controls(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    store = tmp_path / ".clawreinforce"
+    store.mkdir()
+    (store / "providers.json").write_text(json.dumps({"openai": {"api_key": "test-key"}}), encoding="utf-8")
+    hub = OpenAIHub(tmp_path)
+    result = hub.execute("openai:gpt-4.1", "system", "user")
+    assert result.output == "OPENAI_OK"
+    assert hub.request is not None
+    assert hub.request[1] == "https://api.openai.com/v1/responses"
+    assert hub.request[2]["model"] == "gpt-4.1"
+    assert "reasoning" not in hub.request[2]
+    assert "text" not in hub.request[2]

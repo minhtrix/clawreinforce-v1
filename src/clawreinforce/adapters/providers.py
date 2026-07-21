@@ -132,10 +132,11 @@ class ProviderHub:
             "model": model,
             "instructions": system,
             "input": user,
-            "reasoning": {"effort": "low"},
-            "text": {"verbosity": "low"},
             "max_output_tokens": 4096,
         }
+        if _uses_gpt5_controls(model):
+            payload["reasoning"] = {"effort": "low"}
+            payload["text"] = {"verbosity": "low"}
         data = self._request("POST", settings["base_url"].rstrip("/") + "/responses", payload, self._headers("openai", settings))
         output = data.get("output_text") or _responses_text(data.get("output", []))
         usage = data.get("usage", {})
@@ -182,6 +183,10 @@ def _responses_text(items: list[dict[str, Any]]) -> str:
         for content in item.get("content", [])
         if content.get("type") == "output_text"
     )
+
+
+def _uses_gpt5_controls(model: str) -> bool:
+    return model.startswith("gpt-5")
 
 
 def _error(code: str, kind: str, message: str, **context: Any) -> ProviderResult:
