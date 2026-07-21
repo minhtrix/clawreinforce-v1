@@ -51,7 +51,7 @@ Long Arena runs stream raw trials over Server-Sent Events, then aggregate them p
 
 ## How Codex was used
 
-This repository was built in milestone-focused Codex sessions from the recovered master specification in [docs/SPEC.md](docs/SPEC.md). Codex translated that spec into the core/adapter/web architecture, implemented the CLI and HTTP surfaces, wrote the deterministic fixtures and regression tests, integrated remote skill and task sources, and kept each behavior change behind a green test increment and an evidence-bearing Git commit.
+This repository was built in milestone-focused Codex sessions from the recovered master specification in [docs/SPEC.md](docs/SPEC.md). Codex translated that spec into the core/adapter/web architecture, implemented the CLI and HTTP surfaces, wrote the deterministic fixtures and regression tests, integrated remote skill and task sources, and kept each behavior change behind a green test increment and an evidence-bearing Git commit. The code-verified failure memory lives in [docs/POSTMORTEMS.md](docs/POSTMORTEMS.md); its guardrails are carried into ten small, sequential [Buildweek V2 prompts](docs/BUILDWEEKV2_PROMPTS.md).
 
 ## How GPT-5.6 is used
 
