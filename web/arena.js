@@ -18,7 +18,7 @@ function renderModels(preferred = "") {
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
   if (!selectedTiers.size && modelCatalog.length && !modelSelectionTouched) {
-    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
+    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:reference")?.tier || modelCatalog[0].tier);
   }
   renderModelChoices($("#arena-tiers"), modelCatalog, selectedTiers, {
     filter: $("#arena-model-filter").value,
@@ -251,11 +251,11 @@ function options(rows, label) {
 async function loadPickers() {
   try {
     const [taskData, skillData, modelData] = await Promise.all([api("/api/tasks"), api("/api/skills"), loadModelCatalog()]);
-    $("#arena-task-picker").replaceChildren(...options(taskData.tasks, (row) => `${row.difficulty} · ${row.name}${row.gradeable ? "" : " · ungraded"}`));
-    $("#arena-skill-picker").replaceChildren(...options(skillData.skills, (row) => row.name));
+    $("#arena-task-picker").replaceChildren(...options(taskData.tasks, (row) => `${row.category || "external"} · ${row.difficulty} · ${row.name}${row.gradeable ? "" : " · ungraded"}`));
+    $("#arena-skill-picker").replaceChildren(...options(skillData.skills, (row) => `${row.kind === "flagship" ? "FLAGSHIP" : "FIXTURE"} · ${row.category} · ${row.name}`));
     modelCatalog = modelData.models;
-    const task = taskData.tasks.find((row) => row.source === "examples/uppercase-task") || taskData.tasks[0];
-    const skill = skillData.skills.find((row) => row.source === "examples/uppercase-skill") || skillData.skills[0];
+    const task = taskData.tasks.find((row) => row.source === "examples/incident-triage-task") || taskData.tasks[0];
+    const skill = skillData.skills.find((row) => row.source === "examples/incident-triage-skill") || skillData.skills[0];
     const tier = modelData.models.find((row) => row.tier === modelData.preset) || modelData.models[0];
     if (!task || !skill || !tier) throw { code: "arena.pickers_empty", kind: "unavailable", message: "Task, skill, or tier catalog is empty.", context: {} };
     $("#arena-task-picker").value = task.source;

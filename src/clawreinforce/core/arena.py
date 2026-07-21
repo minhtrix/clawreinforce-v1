@@ -25,6 +25,7 @@ class ArenaTask:
     oracle: str | None
     source: str = "native"
     difficulty: str | None = None
+    category: str | None = None
 
 
 @dataclass(slots=True)
@@ -88,6 +89,9 @@ def load_task(path: str | Path) -> ArenaTask:
                 str(raw["prompt"]),
                 CheckSpec(str(check["kind"]), check.get("value"), dict(check.get("options", {}))),
                 str(raw["oracle"]),
+                "native",
+                str(raw.get("difficulty")) if raw.get("difficulty") else None,
+                str(raw.get("category")) if raw.get("category") else None,
             )
         except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
             raise ClawError("task.invalid", "validation", str(exc), path=str(task_file)) from exc
@@ -104,7 +108,7 @@ def load_task(path: str | Path) -> ArenaTask:
             difficulty = tomllib.loads(metadata.read_text(encoding="utf-8")).get("metadata", {}).get("difficulty") or difficulty
         except (OSError, tomllib.TOMLDecodeError):
             difficulty = None
-    return ArenaTask(root, title, prompt, None, None, "skillsbench", str(difficulty) if difficulty else None)
+    return ArenaTask(root, title, prompt, None, None, "skillsbench", str(difficulty) if difficulty else None, None)
 
 
 def task_health(task: ArenaTask) -> dict[str, Any]:

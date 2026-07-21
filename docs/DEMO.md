@@ -57,17 +57,17 @@ That short probe is normally under $0.01. The estimate uses current standard GPT
 ## 0:35–1:15 — deterministic certificate and badge
 
 ```console
-clawreinforce certify examples/uppercase-skill --tier fixture:upper-if-skilled
-clawreinforce badge demo-output/uppercase-certificate.json --output demo-output/uppercase-badge.svg
+clawreinforce certify examples/incident-triage-skill --tier fixture:reference
+clawreinforce badge demo-output/incident-triage-certificate.json --output demo-output/incident-triage-badge.svg
 ```
 
 Expected signal:
 
 ```text
 status: completed
-coverage: 1 / 1
+coverage: 10 / 10
 pass_rate: 1.0
-artifacts: demo-output/uppercase-certificate.json, demo-output/uppercase-badge.svg
+artifacts: demo-output/incident-triage-certificate.json, demo-output/incident-triage-badge.svg
 ```
 
 Say: “The signature binds this result to the exact skill fingerprint. No key or network was used.”
@@ -75,8 +75,8 @@ Say: “The signature binds this result to the exact skill fingerprint. No key o
 ## 1:15–1:55 — measured uplift and exports
 
 ```console
-clawreinforce bench examples/uppercase-task examples/uppercase-skill \
-  --tier fixture:upper-if-skilled --trials 2 \
+clawreinforce bench examples/incident-triage-task examples/incident-triage-skill \
+  --tier fixture:reference --trials 2 \
   --csv demo-output/arena.csv --png demo-output/arena.png
 ```
 
@@ -100,9 +100,9 @@ clawreinforce serve --project . --host 127.0.0.1 --port 8788
 
 Open [http://127.0.0.1:8788](http://127.0.0.1:8788), then show:
 
-1. **Verify (20s):** select `uppercase-skill` and `fixture:upper-if-skilled`; point to findings, 1/1 coverage, fingerprint, signature check, badge, then the install verdict.
+1. **Verify (20s):** select `incident-triage` and `fixture:reference`; point to ten frozen cases, 10/10 coverage, fingerprint, signature check, badge, then the install verdict.
 2. **Improve (10s):** select `improvable-uppercase-skill`, keep `fixture:upper-if-skilled` and `instruct`, then run the dry-run. Show the failing case turning green, the accepted unified diff, and the zero-regression gate reason.
-3. **Arena (20s):** run two fixture trials; rows arrive from SSE, uplift becomes `+1.00`, and CSV/PNG downloads activate.
+3. **Arena (20s):** run `triage-checkout-outage` with `incident-triage`; two reference trials arrive from SSE, uplift becomes `+1.00`, and CSV/PNG downloads activate.
 4. **Models (10s):** show `configured`, `key_source`, `last_error`, then click **Discover fixture**. No secret value is rendered.
 
 Finish before 3:00: “No agent should run a skill nobody verified.”

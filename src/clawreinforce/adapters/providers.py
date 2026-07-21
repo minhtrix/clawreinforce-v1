@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 from clawreinforce.core.models import ProviderResult
+from clawreinforce.adapters.fixtures import FIXTURE_MODELS, execute_fixture
 
 
 DEFAULTS: dict[str, dict[str, Any]] = {
@@ -69,10 +69,8 @@ class ProviderHub:
         if ":" not in tier:
             return _error("tier.invalid", "validation", "tier must be provider:model", tier=tier)
         provider, model = tier.split(":", 1)
-        if provider == "fixture" and model == "echo":
-            return ProviderResult("completed", output=user)
-        if provider == "fixture" and model == "upper-if-skilled":
-            return ProviderResult("completed", output=_fixture_upper(system, user))
+        if provider == "fixture":
+            return execute_fixture(model, system, user)
         settings = self._settings(provider)
         kind = str(settings.get("kind", provider))
         if not settings.get("enabled", True):
@@ -94,7 +92,7 @@ class ProviderHub:
 
     def discover(self, provider: str) -> ProviderResult:
         if provider == "fixture":
-            return ProviderResult("completed", output=json.dumps(["echo", "upper-if-skilled"]))
+            return ProviderResult("completed", output=json.dumps(FIXTURE_MODELS))
         settings = self._settings(provider)
         kind = str(settings.get("kind", provider))
         if not settings.get("enabled", True):
@@ -184,43 +182,6 @@ def _responses_text(items: list[dict[str, Any]]) -> str:
         for content in item.get("content", [])
         if content.get("type") == "output_text"
     )
-
-
-def _fixture_upper(system: str, user: str) -> str:
-    if "CLAWREINFORCE_ADVERSARIAL_TRAPS" in system:
-        limit_match = re.search(r"at most (\d+)", system)
-        limit = int(limit_match.group(1)) if limit_match else 3
-        candidates = [
-            {
-                "input": "hello world",
-                "check": {"kind": "equals", "value": "HELLO WORLD"},
-                "rationale": "Exercise spaces and lowercase conversion promised by the skill.",
-            },
-            {
-                "input": "MiXeD-123",
-                "check": {"kind": "equals", "value": "MIXED-123"},
-                "rationale": "Exercise mixed case while preserving punctuation and digits.",
-            },
-            {
-                "input": "",
-                "check": {"kind": "equals", "value": ""},
-                "rationale": "Exercise the empty-input boundary without inventing an error contract.",
-            },
-        ]
-        return json.dumps(candidates[:limit])
-    if "CLAWREINFORCE_IMPROVE_INSTRUCT" in system:
-        return "Return the supplied text in uppercase. Return only the converted text."
-    if "CLAWREINFORCE_IMPROVE_FEWSHOT" in system:
-        return user.upper()
-    skill_match = re.search(r"<skill>\s*(.*?)\s*</skill>", system, flags=re.DOTALL)
-    body = skill_match.group(1) if skill_match else ""
-    if "uppercase" in body.lower():
-        return user.upper()
-    examples = re.findall(r"- Input: (.*?)\n  Output: (.*?)(?=\n- Input:|\Z)", body, flags=re.DOTALL)
-    for case_input, output in examples:
-        if case_input.strip() == user.strip():
-            return output.strip()
-    return user
 
 
 def _error(code: str, kind: str, message: str, **context: Any) -> ProviderResult:

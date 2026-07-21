@@ -1,0 +1,52 @@
+[
+  {
+    "id": "outage-is-p1",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-101\",\"service\":\"checkout\",\"severity_signal\":\"outage\",\"customer_impact_pct\":80,\"repeated_count\":0}",
+    "check": {"kind": "property", "value": "P1", "options": {"path": "severity"}}
+  },
+  {
+    "id": "login-routes-identity",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-102\",\"service\":\"login\",\"severity_signal\":\"degraded\",\"customer_impact_pct\":20,\"repeated_count\":2}",
+    "check": {"kind": "property", "value": "identity", "options": {"path": "owner"}}
+  },
+  {
+    "id": "exploit-routes-security",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-103\",\"service\":\"auth-api\",\"severity_signal\":\"active_exploit\",\"customer_impact_pct\":1,\"repeated_count\":1}",
+    "check": {"kind": "property", "value": "security", "options": {"path": "owner"}}
+  },
+  {
+    "id": "data-loss-is-p1",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-104\",\"service\":\"database\",\"severity_signal\":\"data_loss\",\"customer_impact_pct\":0,\"repeated_count\":0}",
+    "check": {"kind": "property", "value": "P1", "options": {"path": "severity"}}
+  },
+  {
+    "id": "latency-is-p2",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-105\",\"service\":\"search\",\"severity_signal\":\"latency\",\"customer_impact_pct\":10,\"repeated_count\":0}",
+    "check": {"kind": "property", "value": "P2", "options": {"path": "severity"}}
+  },
+  {
+    "id": "informational-is-p3",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-106\",\"service\":\"catalog\",\"severity_signal\":\"informational\",\"customer_impact_pct\":0,\"repeated_count\":0}",
+    "check": {"kind": "property", "value": "P3", "options": {"path": "severity"}}
+  },
+  {
+    "id": "deploy-regression-rolls-back",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-107\",\"service\":\"payments\",\"severity_signal\":\"regression\",\"customer_impact_pct\":12,\"repeated_count\":1,\"recent_deploy\":true}",
+    "check": {"kind": "property", "value": "rollback recent change and page service owner", "options": {"path": "action"}}
+  },
+  {
+    "id": "repeat-is-duplicate",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-108\",\"service\":\"search\",\"severity_signal\":\"5xx\",\"customer_impact_pct\":5,\"repeated_count\":4}",
+    "check": {"kind": "property", "value": true, "options": {"path": "duplicate"}}
+  },
+  {
+    "id": "billing-routes-payments",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-109\",\"service\":\"billing-worker\",\"severity_signal\":\"degraded\",\"customer_impact_pct\":3,\"repeated_count\":0}",
+    "check": {"kind": "property", "value": "payments", "options": {"path": "owner"}}
+  },
+  {
+    "id": "single-event-not-duplicate",
+    "input": "{\"scenario\":\"incident-triage\",\"incident_id\":\"INC-110\",\"service\":\"catalog\",\"severity_signal\":\"degraded\",\"customer_impact_pct\":1,\"repeated_count\":1}",
+    "check": {"kind": "property", "value": false, "options": {"path": "duplicate"}}
+  }
+]

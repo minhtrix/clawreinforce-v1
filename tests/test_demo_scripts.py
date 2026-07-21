@@ -8,8 +8,9 @@ def test_demo_scripts_cover_the_same_executable_story() -> None:
     for relative in ("demo/demo.ps1", "demo/demo.sh"):
         script = (ROOT / relative).read_text(encoding="utf-8")
         assert "https://clawhub.ai/jaaneek/skills/x-search" in script
-        assert "fixture:upper-if-skilled" in script
-        assert "uppercase-certificate.json" in script
+        assert "fixture:reference" in script
+        assert "incident-triage-skill" in script
+        assert "incident-triage-certificate.json" in script
         assert "arena.csv" in script and "arena.png" in script
         assert "serve --project . --host 127.0.0.1" in script
         assert "-m" in script and "clawreinforce" in script

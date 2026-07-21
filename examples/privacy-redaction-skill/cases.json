@@ -1,0 +1,52 @@
+[
+  {
+    "id": "email",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"Contact ada@example.com today.\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": "Contact [EMAIL] today.", "options": {"path": "redacted_text"}}
+  },
+  {
+    "id": "phone",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"Call 415-555-0134 now\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": "Call [PHONE] now", "options": {"path": "redacted_text"}}
+  },
+  {
+    "id": "ssn-count",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"SSN 123-45-6789\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": 1, "options": {"path": "redaction_count"}}
+  },
+  {
+    "id": "api-key-type",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"key sk-abcdefghijklmnop\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": ["API_KEY"], "options": {"path": "types"}}
+  },
+  {
+    "id": "multiple-count",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"ada@example.com / 123-45-6789\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": 2, "options": {"path": "redaction_count"}}
+  },
+  {
+    "id": "allowlist",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"Public contact press@example.com\",\"allowlist\":[\"press@example.com\"]}",
+    "check": {"kind": "property", "value": "Public contact press@example.com", "options": {"path": "redacted_text"}}
+  },
+  {
+    "id": "clean-text",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"No personal data here.\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": 0, "options": {"path": "redaction_count"}}
+  },
+  {
+    "id": "type-order",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"ada@example.com then 415-555-0134\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": ["EMAIL", "PHONE"], "options": {"path": "types"}}
+  },
+  {
+    "id": "repeated-emails",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"a@example.com b@example.com\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": 2, "options": {"path": "redaction_count"}}
+  },
+  {
+    "id": "punctuation",
+    "input": "{\"scenario\":\"privacy-redaction\",\"text\":\"Email: ada@example.com, thanks!\",\"allowlist\":[]}",
+    "check": {"kind": "property", "value": "Email: [EMAIL], thanks!", "options": {"path": "redacted_text"}}
+  }
+]

@@ -34,7 +34,8 @@ def task_catalog(project_root: Path) -> dict[str, Any]:
                 {
                     "name": task.name,
                     "source": task_file.parent.relative_to(project_root).as_posix(),
-                    "difficulty": "fixture",
+                    "difficulty": task.difficulty or "fixture",
+                    "category": task.category or "smoke-test",
                     "gradeable": True,
                 }
             )

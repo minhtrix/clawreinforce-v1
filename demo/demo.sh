@@ -71,17 +71,17 @@ elif ((!skip_openai_probe)); then
 fi
 
 printf '\n[2/4] Certify and render signed evidence (zero keys)\n'
-certify_json="$(capture_claw '0' certify examples/uppercase-skill --tier fixture:upper-if-skilled)"
+certify_json="$(capture_claw '0' certify examples/incident-triage-skill --tier fixture:reference)"
 printf '%s' "$certify_json" | python -c 'import json,sys; assert json.load(sys.stdin)["report"]["tiers"][0]["pass_rate"] == 1.0'
-certificate="$output_root/uppercase-certificate.json"
+certificate="$output_root/incident-triage-certificate.json"
 printf '%s' "$certify_json" | python -c 'import json,shutil,sys; shutil.copyfile(json.load(sys.stdin)["certificate_path"], sys.argv[1])' "$certificate"
-badge="$output_root/uppercase-badge.svg"
+badge="$output_root/incident-triage-badge.svg"
 capture_claw '0' badge "$certificate" --output "$badge" >/dev/null
 
 printf '\n[3/4] Measure uplift and export evidence (zero keys)\n'
 csv="$output_root/arena.csv"
 png="$output_root/arena.png"
-bench_json="$(capture_claw '0' bench examples/uppercase-task examples/uppercase-skill --tier fixture:upper-if-skilled --trials 2 --csv "$csv" --png "$png")"
+bench_json="$(capture_claw '0' bench examples/incident-triage-task examples/incident-triage-skill --tier fixture:reference --trials 2 --csv "$csv" --png "$png")"
 printf '%s' "$bench_json" | python -c 'import json,sys; assert json.load(sys.stdin)["report"]["summary"]["uplift"] == 1.0'
 for artifact in "$certificate" "$badge" "$csv" "$png"; do
   [[ -s "$artifact" ]] || { echo "Missing demo artifact: $artifact" >&2; exit 1; }

@@ -40,9 +40,19 @@ def test_verify_http_flow_uses_fixture_without_keys(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         catalog = request(base, "/api/skills")
         assert {row["source"] for row in catalog["skills"]} == {
+            "examples/api-migration-skill",
             "examples/hello-skill",
+            "examples/incident-triage-skill",
             "examples/improvable-uppercase-skill",
+            "examples/privacy-redaction-skill",
             "examples/uppercase-skill",
+        }
+        flagship = next(row for row in catalog["skills"] if row["source"] == "examples/incident-triage-skill")
+        assert {key: flagship[key] for key in ("kind", "category", "difficulty", "case_count")} == {
+            "kind": "flagship",
+            "category": "operations",
+            "difficulty": "medium",
+            "case_count": 10,
         }
 
         scan = request(base, "/api/scan", {"path": "examples/uppercase-skill"})
@@ -224,7 +234,7 @@ def test_model_provider_discovery_http_returns_table_fields(tmp_path: Path) -> N
         "state": "key_missing",
     }
     assert result["discovery"] == {"provider": "fixture", "status": "completed", "error": None}
-    assert fixture["models"] == ["echo", "upper-if-skilled"]
+    assert fixture["models"] == ["echo", "upper-if-skilled", "reference"]
 
 
 def test_initial_model_catalog_never_calls_remote_discovery(tmp_path: Path) -> None:
@@ -238,8 +248,10 @@ def test_initial_model_catalog_never_calls_remote_discovery(tmp_path: Path) -> N
     assert catalog["models"] == [
         {"provider": "fixture", "model": "echo", "tier": "fixture:echo", "kind": "fixture"},
         {"provider": "fixture", "model": "upper-if-skilled", "tier": "fixture:upper-if-skilled", "kind": "fixture"},
+        {"provider": "fixture", "model": "reference", "tier": "fixture:reference", "kind": "fixture"},
     ]
     assert catalog["llm_count"] == 0
+    assert catalog["preset"] == "fixture:reference"
     with api_server(tmp_path) as base:
         with urllib.request.urlopen(base + "/api/models", timeout=5) as response:
             assert response.headers["Cache-Control"] == "no-store"

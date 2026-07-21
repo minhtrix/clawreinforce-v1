@@ -14,15 +14,15 @@ The built-in fixture provider is deterministic and requires no account, network 
 
 ```console
 $ python -m pip install -e .
-$ clawreinforce certify examples/hello-skill --tier fixture:echo
-$ clawreinforce guard examples/hello-skill --tier fixture:echo
-$ clawreinforce bench examples/uppercase-task examples/uppercase-skill --tier fixture:upper-if-skilled --trials 2
+$ clawreinforce certify examples/incident-triage-skill --tier fixture:reference
+$ clawreinforce guard examples/incident-triage-skill --tier fixture:reference
+$ clawreinforce bench examples/incident-triage-task examples/incident-triage-skill --tier fixture:reference --trials 2
 ```
 
 Expected signals in the JSON output:
 
 ```text
-certify  -> status: completed, pass_rate: 1.0, signed certificate_path
+certify  -> status: completed, coverage: 10/10, pass_rate: 1.0, signed certificate_path
 guard    -> verdict: install
 bench    -> without_skill: 0.0, with_skill: 1.0, uplift: 1.0, coverage: 2/2
 ```
@@ -32,6 +32,14 @@ Run the tests with `python -m pip install -e ".[dev]"` followed by `python -m py
 For judging or recording, [docs/DEMO.md](docs/DEMO.md) contains the executable
 three-minute path and [docs/SUBMISSION.md](docs/SUBMISSION.md) contains the verified
 submission copy, disclosure, and final access checklist.
+
+## Flagship challenge packs
+
+The public examples are not limited to uppercase. Three frozen challenge packs cover
+production incident triage, privacy-safe redaction, and complete-file OpenAI Responses
+API migration. Each ships ten independent golden cases and a gradeable Arena task. See
+[docs/FLAGSHIPS.md](docs/FLAGSHIPS.md) for their contracts, case matrix, and the important
+difference between deterministic reference coverage and real-LLM evidence.
 
 ## Improve a failing skill
 

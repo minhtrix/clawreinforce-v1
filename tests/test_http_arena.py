@@ -42,13 +42,21 @@ def json_request(base: str, path: str, payload: dict | None = None) -> dict:
 def test_arena_streams_fixture_rows_and_exports(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         catalog = json_request(base, "/api/tasks")
-        assert catalog["tasks"][0] == {
+        uppercase = next(row for row in catalog["tasks"] if row["source"] == "examples/uppercase-task")
+        assert uppercase == {
             "name": "uppercase-text",
             "source": "examples/uppercase-task",
             "difficulty": "fixture",
+            "category": "smoke-test",
             "gradeable": True,
         }
         assert {row["difficulty"] for row in catalog["tasks"]} == {"fixture", "easy", "medium", "hard"}
+        assert {row["category"] for row in catalog["tasks"] if row["gradeable"]} == {
+            "coding",
+            "operations",
+            "security",
+            "smoke-test",
+        }
 
         started = json_request(
             base,

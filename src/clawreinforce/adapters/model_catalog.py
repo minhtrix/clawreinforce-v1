@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from clawreinforce.adapters.providers import ProviderHub
+from clawreinforce.adapters.fixtures import FIXTURE_MODELS
 from clawreinforce.core.models import ProviderResult
 from clawreinforce.errors import ClawError
 
@@ -14,7 +15,7 @@ class ModelCatalog:
 
     def __init__(self, providers: ProviderHub) -> None:
         self.providers = providers
-        self.discovered: dict[str, list[str]] = {"fixture": ["echo", "upper-if-skilled"]}
+        self.discovered: dict[str, list[str]] = {"fixture": list(FIXTURE_MODELS)}
         self.last_errors: dict[str, dict[str, Any] | None] = {}
 
     def catalog(self, *, auto_discover: bool = False) -> dict[str, Any]:
@@ -36,7 +37,7 @@ class ModelCatalog:
             (row["tier"] for row in llms if row["tier"] == "openai:gpt-5.6-sol"),
             next(
                 (row["tier"] for row in llms if row["tier"] == "anthropic:claude-sonnet-5"),
-                next((row["tier"] for row in llms if row["provider"] == "ollama-cloud"), llms[0]["tier"] if llms else "fixture:upper-if-skilled"),
+                next((row["tier"] for row in llms if row["provider"] == "ollama-cloud"), llms[0]["tier"] if llms else "fixture:reference"),
             ),
         )
         return {

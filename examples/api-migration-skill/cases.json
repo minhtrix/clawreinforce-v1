@@ -1,0 +1,52 @@
+[
+  {
+    "id": "python-endpoint",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"response = client.chat.completions.create(model='gpt-x', messages=items)\"}}",
+    "check": {"kind": "contains", "value": "client.responses.create"}
+  },
+  {
+    "id": "python-output",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"print(response.choices[0].message.content)\"}}",
+    "check": {"kind": "contains", "value": "response.output_text"}
+  },
+  {
+    "id": "javascript-endpoint",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.js\":\"const r = await client.chat.completions.create({messages: input});\"}}",
+    "check": {"kind": "contains", "value": "client.responses.create"}
+  },
+  {
+    "id": "javascript-input-field",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.js\":\"const r = await client.chat.completions.create({messages: input});\"}}",
+    "check": {"kind": "contains", "value": "input: input"}
+  },
+  {
+    "id": "already-migrated",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"response = client.responses.create(model='gpt-x', input='hello')\"}}",
+    "check": {"kind": "contains", "value": "client.responses.create"}
+  },
+  {
+    "id": "preserve-comment",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"# keep this comment\\nresponse = client.chat.completions.create(model='gpt-x', messages=items)\"}}",
+    "check": {"kind": "contains", "value": "keep this comment"}
+  },
+  {
+    "id": "unrelated-code",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"math.py\":\"def add(a, b):\\n    return a + b\"}}",
+    "check": {"kind": "regex", "value": "return a \\+ b"}
+  },
+  {
+    "id": "preserve-model",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"response = client.chat.completions.create(model='gpt-5.6-sol', messages=items)\"}}",
+    "check": {"kind": "contains", "value": "gpt-5.6-sol"}
+  },
+  {
+    "id": "remove-python-messages-field",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"response = client.chat.completions.create(model='gpt-x', messages=items)\"}}",
+    "check": {"kind": "not_contains", "value": "messages="}
+  },
+  {
+    "id": "valid-emitted-python",
+    "input": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"response = client.chat.completions.create(model='gpt-x', messages=items)\\nprint(response.choices[0].message.content)\"}}",
+    "check": {"kind": "task", "options": {"grader": "from pathlib import Path\ntext = Path('app.py').read_text(encoding='utf-8')\ncompile(text, 'app.py', 'exec')\nassert 'client.responses.create' in text\nassert 'input=items' in text\nassert 'response.output_text' in text"}}
+  }
+]

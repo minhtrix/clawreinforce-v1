@@ -14,7 +14,7 @@ function renderModels(preferred = "") {
   selectedTiers = new Set([...selectedTiers].filter((tier) => modelCatalog.some((row) => row.tier === tier)));
   if (preferred && modelCatalog.some((row) => row.tier === preferred)) selectedTiers.add(preferred);
   if (!selectedTiers.size && modelCatalog.length && !modelSelectionTouched) {
-    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:upper-if-skilled")?.tier || modelCatalog[0].tier);
+    selectedTiers.add(modelCatalog.find((row) => row.tier === "fixture:reference")?.tier || modelCatalog[0].tier);
   }
   renderModelChoices($("#verify-tiers"), modelCatalog, selectedTiers, {
     filter: $("#verify-model-filter").value,
@@ -159,11 +159,11 @@ async function loadPickers() {
     const skills = skillData.skills.map((skill) => {
       const option = document.createElement("option");
       option.value = skill.source;
-      option.textContent = `${skill.name} — ${skill.description || "No description"}`;
+      option.textContent = `${skill.kind === "flagship" ? "FLAGSHIP" : "FIXTURE"} · ${skill.category} · ${skill.name} — ${skill.case_count} cases`;
       return option;
     });
     $("#verify-skill").replaceChildren(...skills);
-    const preferred = skillData.skills.find((skill) => skill.source === "examples/uppercase-skill");
+    const preferred = skillData.skills.find((skill) => skill.source === "examples/incident-triage-skill");
     if (preferred) $("#verify-skill").value = preferred.source;
     modelCatalog = modelData.models;
     renderModels(modelData.preset);

@@ -89,12 +89,12 @@ Requirements: Python 3.11+ on Windows, macOS, or Linux. No Node runtime is requi
 ```console
 python -m venv .venv
 python -m pip install -e .
-python -m clawreinforce certify examples/uppercase-skill --tier fixture:upper-if-skilled
-python -m clawreinforce bench examples/uppercase-task examples/uppercase-skill --tier fixture:upper-if-skilled --trials 2
+python -m clawreinforce certify examples/incident-triage-skill --tier fixture:reference
+python -m clawreinforce bench examples/incident-triage-task examples/incident-triage-skill --tier fixture:reference --trials 2
 python -m clawreinforce serve --project . --host 127.0.0.1 --port 8788
 ```
 
-Expected signals: certification `pass_rate: 1.0`; Arena `without_skill: 0.0`,
+Expected signals: certification `coverage: 10/10`, `pass_rate: 1.0`; Arena `without_skill: 0.0`,
 `with_skill: 1.0`, `uplift: 1.0`; GUI at `http://127.0.0.1:8788`.
 
 For the scripted path and narration, use `docs/DEMO.md`. Only optional real-provider

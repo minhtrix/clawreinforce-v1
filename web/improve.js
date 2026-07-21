@@ -184,7 +184,7 @@ function renderModelPickers(models, preferred = "") {
 
 function loadOptions(skills, models, preset) {
   const skillPicker = $("#improve-skill");
-  skillPicker.replaceChildren(...skills.map((skill) => new Option(`${skill.name} — ${skill.description}`, skill.source)));
+  skillPicker.replaceChildren(...skills.map((skill) => new Option(`${skill.kind === "flagship" ? "FLAGSHIP" : "FIXTURE"} · ${skill.category} · ${skill.name} — ${skill.case_count} cases`, skill.source)));
   const preferred = skills.find((skill) => skill.name === "improvable-uppercase-skill") || skills[0];
   if (preferred) skillPicker.value = preferred.source;
   $("#improve-source").value = preferred?.source || "";

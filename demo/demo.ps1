@@ -72,20 +72,20 @@ try {
 
     Write-Host "`n[2/4] Certify and render signed evidence (zero keys)" -ForegroundColor Magenta
     $certify = Invoke-ClawJson -Arguments @(
-        "certify", "examples/uppercase-skill", "--tier", "fixture:upper-if-skilled"
+        "certify", "examples/incident-triage-skill", "--tier", "fixture:reference"
     )
     if ($certify.report.tiers[0].pass_rate -ne 1.0) { throw "Fixture certification did not pass." }
-    $certificate = Join-Path $outputRoot "uppercase-certificate.json"
+    $certificate = Join-Path $outputRoot "incident-triage-certificate.json"
     Copy-Item -LiteralPath $certify.certificate_path -Destination $certificate -Force
-    $badge = Join-Path $outputRoot "uppercase-badge.svg"
+    $badge = Join-Path $outputRoot "incident-triage-badge.svg"
     $null = Invoke-ClawJson -Arguments @("badge", $certificate, "--output", $badge)
 
     Write-Host "`n[3/4] Measure uplift and export evidence (zero keys)" -ForegroundColor Magenta
     $csv = Join-Path $outputRoot "arena.csv"
     $png = Join-Path $outputRoot "arena.png"
     $bench = Invoke-ClawJson -Arguments @(
-        "bench", "examples/uppercase-task", "examples/uppercase-skill",
-        "--tier", "fixture:upper-if-skilled", "--trials", "2",
+        "bench", "examples/incident-triage-task", "examples/incident-triage-skill",
+        "--tier", "fixture:reference", "--trials", "2",
         "--csv", $csv, "--png", $png
     )
     if ($bench.report.summary.uplift -ne 1.0) { throw "Fixture uplift was not +1.0." }

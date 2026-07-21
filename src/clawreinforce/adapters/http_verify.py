@@ -10,21 +10,26 @@ from clawreinforce.core.certify import Executor, certify_skill
 from clawreinforce.core.fetch import fetched_skill
 from clawreinforce.core.guard import guard_skill
 from clawreinforce.core.scan import scan_skill
-from clawreinforce.core.skill import load_skill
+from clawreinforce.core.skill import load_skill, parse_frontmatter
 from clawreinforce.errors import ClawError
 
 
 def skill_catalog(project_root: Path) -> dict[str, Any]:
     examples = project_root / "examples"
-    rows: list[dict[str, str]] = []
+    rows: list[dict[str, Any]] = []
     if examples.is_dir():
         for skill_file in sorted(examples.glob("*/SKILL.md")):
             skill = load_skill(skill_file.parent)
+            metadata, _ = parse_frontmatter(skill_file.read_text(encoding="utf-8"))
             rows.append(
                 {
                     "name": skill.name,
                     "description": skill.description,
                     "source": skill_file.parent.relative_to(project_root).as_posix(),
+                    "kind": metadata.get("kind", "unclassified"),
+                    "category": metadata.get("category", "other"),
+                    "difficulty": metadata.get("difficulty", "unknown"),
+                    "case_count": len(skill.cases),
                 }
             )
     return {"skills": rows}

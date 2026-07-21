@@ -1,0 +1,8 @@
+{
+  "name": "triage-checkout-outage",
+  "category": "operations",
+  "difficulty": "medium",
+  "prompt": "{\"scenario\":\"incident-triage\",\"incident_id\":\"DEMO-501\",\"service\":\"checkout\",\"severity_signal\":\"outage\",\"customer_impact_pct\":68,\"repeated_count\":3}",
+  "check": {"kind": "property", "value": "P1", "options": {"path": "severity"}},
+  "oracle": "{\"incident_id\":\"DEMO-501\",\"severity\":\"P1\",\"owner\":\"payments\",\"duplicate\":true,\"action\":\"page payments and start incident bridge\"}"
+}

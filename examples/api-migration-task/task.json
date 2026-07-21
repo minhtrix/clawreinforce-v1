@@ -1,0 +1,8 @@
+{
+  "name": "migrate-openai-client-call",
+  "category": "coding",
+  "difficulty": "hard",
+  "prompt": "{\"scenario\":\"api-migration\",\"files\":{\"app.py\":\"from openai import OpenAI\\nclient = OpenAI()\\nresponse = client.chat.completions.create(model='gpt-5.6-sol', messages='hello')\\nprint(response.choices[0].message.content)\"}}",
+  "check": {"kind": "task", "options": {"grader": "from pathlib import Path\ntext = Path('app.py').read_text(encoding='utf-8')\ncompile(text, 'app.py', 'exec')\nassert 'client.responses.create' in text\nassert \"input='hello'\" in text\nassert 'response.output_text' in text\nassert 'chat.completions' not in text"}},
+  "oracle": "{\"app.py\":\"from openai import OpenAI\\nclient = OpenAI()\\nresponse = client.responses.create(model='gpt-5.6-sol', input='hello')\\nprint(response.output_text)\"}"
+}
