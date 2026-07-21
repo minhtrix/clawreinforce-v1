@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
+from typing import Any
 
 from clawreinforce.core.improve import (
     Executor,
@@ -18,6 +19,7 @@ from clawreinforce.errors import ClawError
 
 
 Matrix = dict[str, dict[str, bool]]
+EventSink = Callable[[dict[str, Any]], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,13 +62,30 @@ def improve_skill_models(
     strategy: str,
     max_rewrites: int,
     executor: Executor,
+    *,
+    emit: EventSink | None = None,
 ) -> MultiImproveReport:
     """Let one author propose while every selected gate model re-runs every golden case."""
+    emit = emit or (lambda event: None)
     gates = _validate_models(skill, author_tier, gate_tiers, strategy, max_rewrites)
     usage: dict[str, dict[str, int]] = {}
     tracked = _tracking_executor(executor, usage)
-    initial = _grade_matrix(skill, gates, tracked)
+    emit({
+        "type": "run_started",
+        "kind": "improve",
+        "skill": skill.name,
+        "author_tier": author_tier,
+        "gate_tiers": list(gates),
+        "case_count": len(skill.cases),
+        "max_rewrites": max_rewrites,
+    })
+    _phase_started(emit, "measure", 0, len(gates) * len(skill.cases))
+    initial = _grade_matrix(skill, gates, tracked, emit, "measure", 0)
+    _phase_completed(emit, "measure", 0, len(gates) * len(skill.cases))
     if _all_green(initial):
+        emit({"type": "phase_skipped", "phase": "propose", "reason": "original body is already green"})
+        emit({"type": "phase_skipped", "phase": "remeasure", "reason": "no candidate was needed"})
+        emit({"type": "gate_decision", "attempt": 0, "accepted": False, "reason": "original body is already green", "regressions": []})
         return _report(skill, author_tier, gates, strategy, "unchanged", False,
                        "all model × golden-case checks already pass", initial, initial,
                        skill.body, (), usage)
@@ -79,14 +98,35 @@ def improve_skill_models(
         if target_key is None:
             break
         failing_cases = _failing_cases(working.cases, outcomes)
+        _phase_started(emit, "propose", number, 1)
         if strategy == "instruct":
             candidate_body = _instruct_body(working, failing_cases, author_tier, tracked)
             examples: list[str] = []
         else:
             candidate_body, examples = _fewshot_body(working, failing_cases, author_tier, tracked)
         candidate = replace(working, body=candidate_body)
-        measured = _grade_matrix(candidate, gates, tracked)
+        emit({
+            "type": "proposal_received",
+            "phase": "propose",
+            "attempt": number,
+            "target_case": target_key,
+            "verified_examples": len(examples),
+            "diff": _diff(working.body, candidate_body),
+        })
+        _phase_completed(emit, "propose", number, 1)
+        _phase_started(emit, "remeasure", number, len(gates) * len(skill.cases))
+        measured = _grade_matrix(candidate, gates, tracked, emit, "remeasure", number)
+        _phase_completed(emit, "remeasure", number, len(gates) * len(skill.cases))
         decision = gate_rewrite(_flatten(outcomes), _flatten(measured), target_key)
+        emit({
+            "type": "gate_decision",
+            "phase": "gate",
+            "attempt": number,
+            "target_case": target_key,
+            "accepted": decision.accepted,
+            "reason": decision.reason,
+            "regressions": list(decision.regressions),
+        })
         attempts.append(
             RewriteAttempt(
                 number,
@@ -147,8 +187,33 @@ def _tracking_executor(
     return tracked
 
 
-def _grade_matrix(skill: Skill, gates: tuple[str, ...], executor: Executor) -> Matrix:
-    return {tier: _grade(skill, tier, executor) for tier in gates}
+def _grade_matrix(
+    skill: Skill,
+    gates: tuple[str, ...],
+    executor: Executor,
+    emit: EventSink,
+    phase: str,
+    attempt: int,
+) -> Matrix:
+    completed = 0
+    total = len(gates) * len(skill.cases)
+    matrix: Matrix = {}
+    for tier in gates:
+        def measured(event: dict[str, Any]) -> None:
+            nonlocal completed
+            completed += 1
+            emit({**event, "phase": phase, "attempt": attempt, "completed": completed, "total": total})
+
+        matrix[tier] = _grade(skill, tier, executor, emit=measured)
+    return matrix
+
+
+def _phase_started(emit: EventSink, phase: str, attempt: int, total: int) -> None:
+    emit({"type": "phase_started", "phase": phase, "attempt": attempt, "completed": 0, "total": total})
+
+
+def _phase_completed(emit: EventSink, phase: str, attempt: int, total: int) -> None:
+    emit({"type": "phase_completed", "phase": phase, "attempt": attempt, "completed": total, "total": total})
 
 
 def _flatten(matrix: Matrix) -> dict[str, bool]:

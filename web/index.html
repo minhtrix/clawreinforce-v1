@@ -128,6 +128,11 @@
         </section>
         <section class="result-shell" aria-live="polite">
           <div class="result-heading"><span>3 · Rewrite evidence</span><span class="status neutral" id="improve-status">READY</span></div>
+          <div class="run-progress" id="improve-run-progress">
+            <div><small>LIVE PHASE</small><strong id="improve-live-phase">Waiting for a run</strong></div>
+            <progress id="improve-progress-bar" max="1" value="0"></progress>
+            <div class="run-progress-meta"><span id="improve-progress-count">No work scheduled</span><time id="improve-elapsed">elapsed 0s</time><span id="improve-eta">ETA unavailable before a run</span></div>
+          </div>
           <div class="harden-outcome"><article><small>BASELINE</small><strong id="harden-baseline">—</strong></article><article><small>BEST ACCEPTED</small><strong id="harden-best">—</strong></article><article class="accent"><small>MEASURED GAIN</small><strong id="harden-delta">—</strong></article><article><small>LANDED AT</small><strong id="harden-iteration">—</strong></article></div>
           <div class="file-truth"><small>FILE TRUTH</small><code id="harden-file-truth">Run Improve to see whether and where the skill would change.</code></div>
           <div class="evidence-section"><h2>Decision</h2><p id="improve-decision" class="empty-state">Choose the improvable fixture, one author, gate models, and a strategy. The first run is a dry-run unless you opt in to apply.</p><small id="improve-run-context"></small><small id="improve-apply-state"></small><small id="improve-measurement-note"></small></div>
@@ -140,6 +145,7 @@
               <li data-phase="gate"><span>4</span><div><strong>Gate</strong><small>Acceptance decision pending.</small></div></li>
             </ol>
           </div>
+          <div class="evidence-section"><h2>Live evidence</h2><ol id="improve-live-feed" class="activity-feed compact-feed"><li class="empty-state">Start Improve to stream measurements, proposals, and gate decisions.</li></ol></div>
           <div class="evidence-section"><h2>Baseline → accepted best by gate model</h2><div id="improve-model-lines" class="model-score-lines"><p class="empty-state">Run Improve to compare every selected gate model against the accepted body.</p></div><small id="improve-usage"></small></div>
           <div class="evidence-section">
             <h2>Golden cases · all gate models must pass</h2>
@@ -213,6 +219,11 @@
           <button class="secondary" id="cancel-button" disabled>Cancel</button>
         </div>
         <pre class="structured-error" id="arena-error" hidden></pre>
+      </div>
+      <div class="run-progress" id="arena-run-progress">
+        <div><small>LIVE PHASE</small><strong id="arena-live-phase">Waiting for a benchmark</strong></div>
+        <progress id="arena-progress-bar" max="1" value="0"></progress>
+        <div class="run-progress-meta"><span id="arena-progress-count">No trials scheduled</span><time id="arena-elapsed">elapsed 0s</time><span id="arena-eta">ETA unavailable before a run</span></div>
       </div>
       <div class="metrics">
         <article><small>WITHOUT SKILL</small><strong id="metric-without">—</strong></article>

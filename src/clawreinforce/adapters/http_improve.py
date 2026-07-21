@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+import threading
 from typing import Any
 from uuid import uuid4
 
+from clawreinforce.adapters.providers import ProviderHub
+from clawreinforce.adapters.run_broker import RunBroker, RunState
 from clawreinforce.core.improve import Executor, improve_skill
 from clawreinforce.core.improve_evidence import enrich_improve_report, learned_patterns
 from clawreinforce.core.improve_models import improve_skill_models
@@ -24,11 +28,13 @@ def improve_source(
     *,
     author_tier: str | None = None,
     gate_tiers: list[str] | None = None,
+    emit: Callable[[dict[str, Any]], None] | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     skill = load_skill(_local_source(project_root, source))
     gates = list(gate_tiers) if gate_tiers is not None else [tier]
     report = (
-        improve_skill_models(skill, author_tier or tier, gates, strategy, max_rewrites, executor)
+        improve_skill_models(skill, author_tier or tier, gates, strategy, max_rewrites, executor, emit=emit)
         if gate_tiers is not None
         else improve_skill(skill, tier, strategy, max_rewrites, executor)
     )
@@ -39,7 +45,7 @@ def improve_source(
     evidence = enrich_improve_report(report.to_dict(), gates)
     event = {
         **evidence,
-        "run_id": f"improve-{uuid4().hex[:12]}",
+        "run_id": run_id or f"improve-{uuid4().hex[:12]}",
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "source": source.strip(),
         "output_path": skill.file.resolve().relative_to(project_root.resolve()).as_posix(),
@@ -52,6 +58,56 @@ def improve_source(
     return {**event, "history": list(reversed(history)), "learned_patterns": learned_patterns(history)}
 
 
+class ImproveManager:
+    def __init__(self, project_root: Path, providers: ProviderHub, runs: RunBroker) -> None:
+        self.project_root = project_root
+        self.providers = providers
+        self.runs = runs
+
+    def start(self, payload: dict[str, Any]) -> RunState:
+        source = str(payload.get("source", "")).strip()
+        author_tier = str(payload.get("author_tier") or payload.get("tier") or "").strip()
+        raw_gates = payload.get("gate_tiers")
+        gates = [str(value).strip() for value in raw_gates] if isinstance(raw_gates, list) else [author_tier]
+        strategy = str(payload.get("strategy", "")).strip()
+        max_rewrites = int(payload.get("max_rewrites", 3))
+        apply = bool(payload.get("apply"))
+        if not source:
+            raise ClawError("source.missing", "validation", "choose or enter a skill source")
+        if not author_tier:
+            raise ClawError("improve.author_tier", "validation", "choose one author model")
+        if not gates or any(not tier for tier in gates):
+            raise ClawError("improve.gate_tiers", "validation", "choose at least one gate model")
+
+        public_id = f"improve-{uuid4().hex[:12]}"
+        state = self.runs.create(public_id)
+
+        def worker() -> None:
+            try:
+                def emit(event: dict[str, Any]) -> None:
+                    state.emit({**event, "run_id": public_id})
+
+                result = improve_source(
+                    self.project_root,
+                    source,
+                    author_tier,
+                    strategy,
+                    max_rewrites,
+                    apply,
+                    self.providers.execute,
+                    author_tier=author_tier,
+                    gate_tiers=gates,
+                    emit=emit,
+                    run_id=public_id,
+                )
+                state.emit({"type": "run_completed", "run_id": public_id, "result": result})
+            except Exception as exc:
+                state.emit({"type": "run_failed", "run_id": public_id, "error": _error(exc)})
+
+        threading.Thread(target=worker, name=public_id, daemon=True).start()
+        return state
+
+
 def _local_source(project_root: Path, source: str) -> Path:
     value = source.strip()
     if not value:
@@ -61,3 +117,9 @@ def _local_source(project_root: Path, source: str) -> Path:
     if candidate != root and root not in candidate.parents:
         raise ClawError("source.outside_project", "security", "improve accepts only project-local skills")
     return candidate
+
+
+def _error(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, ClawError):
+        return exc.detail.to_dict()
+    return {"code": "improve.failed", "kind": "runtime", "message": str(exc), "context": {}}

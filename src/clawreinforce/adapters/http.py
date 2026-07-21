@@ -12,7 +12,7 @@ from clawreinforce.adapters.providers import ProviderHub
 from clawreinforce.adapters.model_catalog import ModelCatalog
 from clawreinforce.adapters.run_broker import RunBroker
 from clawreinforce.adapters.http_arena import BenchManager, task_catalog
-from clawreinforce.adapters.http_improve import improve_source
+from clawreinforce.adapters.http_improve import ImproveManager, improve_source
 from clawreinforce.adapters.http_traps import discover_traps_source, freeze_traps_source
 from clawreinforce.adapters.http_verify import (
     certify_source,
@@ -34,6 +34,7 @@ class AppState:
         self.models = ModelCatalog(self.providers)
         self.runs = RunBroker()
         self.bench = BenchManager(self.project_root, self.providers, self.runs)
+        self.improve = ImproveManager(self.project_root, self.providers, self.runs)
 
     def model_catalog(self, refresh: bool = False, auto_discover: bool = False) -> dict[str, Any]:
         return self.models.catalog(auto_discover=refresh or auto_discover)
@@ -164,6 +165,9 @@ def make_handler(app: AppState) -> type[BaseHTTPRequestHandler]:
                             gate_tiers=list(raw_gates) if isinstance(raw_gates, list) else None,
                         )
                     )
+                elif path == "/api/improve/runs":
+                    state = app.improve.start(payload)
+                    self._json({"run_id": state.run_id}, HTTPStatus.ACCEPTED)
                 elif path == "/api/traps":
                     self._json(
                         discover_traps_source(

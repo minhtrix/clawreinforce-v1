@@ -2,6 +2,7 @@ import { $, api, clearError, renderError, setStatus } from "/ui.js";
 import { beginHardenEvidence, initHardenEvidence, renderHardenEvidence } from "/harden-evidence.js";
 import { loadModelCatalog } from "/model-catalog.js";
 import { renderModelChoices, selectionSummary } from "/model-picker.js";
+import { createRunProgress } from "/run-progress.js";
 
 
 let modelCatalog = [];
@@ -9,6 +10,16 @@ let selectedGateTiers = new Set();
 let authorTier = "";
 let authorSelectionTouched = false;
 let gateSelectionTouched = false;
+let currentRun = null;
+let stream = null;
+
+const improveProgress = createRunProgress({
+  phase: $("#improve-live-phase"),
+  bar: $("#improve-progress-bar"),
+  count: $("#improve-progress-count"),
+  elapsed: $("#improve-elapsed"),
+  eta: $("#improve-eta"),
+});
 
 
 function setPhase(name, state, message) {
@@ -110,12 +121,108 @@ function renderReport(result) {
 }
 
 
+function improveFeed(type, message, tone = "") {
+  const empty = $("#improve-live-feed .empty-state");
+  if (empty) empty.remove();
+  const item = document.createElement("li");
+  item.className = tone;
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString();
+  const event = document.createElement("strong");
+  event.textContent = type.replaceAll("_", " ");
+  const detail = document.createElement("span");
+  detail.textContent = message;
+  item.append(time, event, detail);
+  const feed = $("#improve-live-feed");
+  feed.appendChild(item);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+
+function listenImprove(runId) {
+  stream = new EventSource(`/api/runs/${runId}/events`);
+  stream.addEventListener("run_started", (event) => {
+    const value = JSON.parse(event.data);
+    improveFeed("run_started", `${value.case_count} case(s) × ${value.gate_tiers.length} gate model(s); up to ${value.max_rewrites} rewrite(s)`);
+  });
+  stream.addEventListener("phase_started", (event) => {
+    const value = JSON.parse(event.data);
+    const attempt = value.attempt ? ` · attempt ${value.attempt}` : "";
+    improveProgress.beginPhase(`${value.phase}${attempt}`, value.total);
+    setPhase(value.phase, "active", `${value.completed} / ${value.total} real work units complete.`);
+    improveFeed("phase_started", `${value.phase}${attempt} · ${value.total} unit(s)`);
+  });
+  stream.addEventListener("measurement", (event) => {
+    const value = JSON.parse(event.data);
+    improveProgress.update(value.completed, value.total, `${value.phase}${value.attempt ? ` · attempt ${value.attempt}` : ""}`);
+    setPhase(value.phase, "active", `${value.completed} / ${value.total} model × case checks complete.`);
+    improveFeed("measurement", `${value.tier} · ${value.case_id} · ${value.passed ? "PASS" : "FAIL"}`, value.passed ? "good" : "warn");
+  });
+  stream.addEventListener("proposal_received", (event) => {
+    const value = JSON.parse(event.data);
+    improveProgress.update(1, 1, `proposal · attempt ${value.attempt}`);
+    $("#improve-decision").textContent = `Proposal ${value.attempt} received for ${value.target_case}; deterministic re-measurement is next.`;
+    improveFeed("proposal_received", `attempt ${value.attempt} · target ${value.target_case} · ${value.verified_examples} verified example(s)`);
+  });
+  stream.addEventListener("phase_completed", (event) => {
+    const value = JSON.parse(event.data);
+    improveProgress.update(value.total, value.total, `${value.phase} complete`);
+    setPhase(value.phase, "complete", `${value.total} / ${value.total} real work units complete.`);
+  });
+  stream.addEventListener("phase_skipped", (event) => {
+    const value = JSON.parse(event.data);
+    setPhase(value.phase, "skipped", `Skipped: ${value.reason}.`);
+    improveFeed("phase_skipped", `${value.phase} · ${value.reason}`);
+  });
+  stream.addEventListener("gate_decision", (event) => {
+    const value = JSON.parse(event.data);
+    improveProgress.beginPhase(`gate · attempt ${value.attempt}`, 1);
+    improveProgress.update(1, 1);
+    setPhase("gate", value.accepted || value.attempt === 0 ? "complete" : "rejected", value.reason);
+    improveFeed("gate_decision", `${value.accepted ? "ACCEPT" : value.attempt === 0 ? "KEEP ORIGINAL" : "REJECT"} · ${value.reason}`, value.accepted || value.attempt === 0 ? "good" : "warn");
+  });
+  stream.addEventListener("run_completed", (event) => {
+    const result = JSON.parse(event.data).result;
+    improveProgress.finish(result.status === "unchanged" ? "Original already green" : `Run ${result.status}`);
+    improveFeed("run_completed", result.reason, result.accepted || result.status === "unchanged" ? "good" : "warn");
+    renderReport(result);
+    $("#improve-button").disabled = false;
+    stream.close();
+  });
+  stream.addEventListener("run_failed", (event) => {
+    const failure = JSON.parse(event.data).error;
+    improveProgress.fail("Run failed");
+    setStatus($("#improve-status"), "FAILED", "bad");
+    improveFeed("run_failed", JSON.stringify(failure), "bad");
+    renderError($("#improve-error"), failure);
+    $("#improve-button").disabled = false;
+    stream.close();
+  });
+  stream.onerror = () => {
+    if ($("#improve-status").textContent !== "RUNNING") return;
+    const failure = {
+      code: "improve.stream_disconnected",
+      kind: "unavailable",
+      message: "The live evidence stream disconnected before a terminal event.",
+      context: { run_id: runId },
+    };
+    improveProgress.fail("Stream disconnected");
+    setStatus($("#improve-status"), "DISCONNECTED", "bad");
+    renderError($("#improve-error"), failure);
+    $("#improve-button").disabled = false;
+  };
+}
+
+
 async function runImprove() {
+  if (stream) stream.close();
   clearError($("#improve-error"));
   const button = $("#improve-button");
   button.disabled = true;
   runningPhases();
   beginHardenEvidence();
+  $("#improve-live-feed").innerHTML = '<li class="empty-state">Run accepted. Connecting to the live evidence stream…</li>';
+  improveProgress.start("Waiting for the first server event");
   setStatus($("#improve-status"), "RUNNING", "neutral");
   try {
     if (!selectedGateTiers.size) {
@@ -124,7 +231,7 @@ async function runImprove() {
     if (!authorTier) {
       throw { code: "improve.author_tier", kind: "validation", message: "Choose one author model.", context: {} };
     }
-    const result = await api("/api/improve", {
+    const result = await api("/api/improve/runs", {
       method: "POST",
       body: JSON.stringify({
         source: $("#improve-source").value.trim(),
@@ -135,11 +242,12 @@ async function runImprove() {
         apply: $("#improve-apply").checked,
       }),
     });
-    renderReport(result);
+    currentRun = result.run_id;
+    listenImprove(currentRun);
   } catch (failure) {
+    improveProgress.fail("Run did not start");
     setStatus($("#improve-status"), "ERROR", "bad");
     renderError($("#improve-error"), failure);
-  } finally {
     button.disabled = false;
   }
 }

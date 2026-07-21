@@ -146,6 +146,31 @@ def test_multi_model_improve_separates_author_from_gate_models(tmp_path: Path) -
     assert report.measurement_note.startswith("One completion per model")
 
 
+def test_multi_model_improve_emits_real_phase_measurements(tmp_path: Path) -> None:
+    path = _broken_uppercase_skill(tmp_path)
+    events: list[dict] = []
+    report = improve_skill_models(
+        load_skill(path),
+        "fixture:upper-if-skilled",
+        ["fixture:upper-if-skilled"],
+        "instruct",
+        1,
+        ProviderHub(tmp_path).execute,
+        emit=events.append,
+    )
+
+    assert report.status == "completed"
+    assert events[0]["type"] == "run_started"
+    assert [(event["phase"], event["completed"], event["total"]) for event in events if event["type"] == "measurement"] == [
+        ("measure", 1, 1),
+        ("remeasure", 1, 1),
+    ]
+    assert [event["type"] for event in events].count("proposal_received") == 1
+    decision = next(event for event in events if event["type"] == "gate_decision")
+    assert decision["accepted"]
+    assert decision["reason"] == "target turned green and no prior pass regressed"
+
+
 def test_multi_model_gate_rejects_cross_model_regression(tmp_path: Path) -> None:
     path = _broken_uppercase_skill(tmp_path)
 

@@ -3,12 +3,21 @@ import { loadHistory } from "/arena_history.js";
 import { renderArenaInsights, resetArenaInsights } from "/arena-results.js";
 import { loadModelCatalog } from "/model-catalog.js";
 import { renderModelChoices, selectionSummary } from "/model-picker.js";
+import { createRunProgress } from "/run-progress.js";
 
 let currentRun = null;
 let stream = null;
 let modelCatalog = [];
 let selectedTiers = new Set();
 let modelSelectionTouched = false;
+
+const arenaProgress = createRunProgress({
+  phase: $("#arena-live-phase"),
+  bar: $("#arena-progress-bar"),
+  count: $("#arena-progress-count"),
+  elapsed: $("#arena-elapsed"),
+  eta: $("#arena-eta"),
+});
 
 
 function renderModels(preferred = "") {
@@ -147,6 +156,7 @@ function finish(type, report) {
   $("#cancel-button").disabled = true;
   setDownloads(currentRun, true);
   setStatus($("#arena-feed-status"), complete ? "COMPLETE" : "CANCELLED", complete ? "good" : "warn");
+  arenaProgress.finish(complete ? "Paired benchmark complete" : "Cancelled · partial evidence kept");
   setTimeout(loadHistory, 100);
   stream.close();
 }
@@ -156,6 +166,7 @@ function listen(runId) {
   stream = new EventSource(`/api/runs/${runId}/events`);
   stream.addEventListener("run_started", (event) => {
     const value = JSON.parse(event.data);
+    arenaProgress.beginPhase("Executing paired trials", value.total);
     feed("run_started", `${value.total} trial row(s) scheduled`);
   });
   stream.addEventListener("model_row", (event) => {
@@ -165,6 +176,7 @@ function listen(runId) {
   });
   stream.addEventListener("progress", (event) => {
     const value = JSON.parse(event.data);
+    arenaProgress.update(value.completed, value.total, "Executing paired trials");
     $("#metric-coverage").textContent = `${value.completed} / ${value.total}`;
     feed("progress", `${value.completed} / ${value.total} rows received`);
   });
@@ -182,6 +194,7 @@ function listen(runId) {
     $("#arena-rows").innerHTML = '<tr><td colspan="7" class="empty">Fix the structured error, then start a new run.</td></tr>';
     feed("run_failed", JSON.stringify(failure), "bad");
     setStatus($("#arena-feed-status"), "FAILED", "bad");
+    arenaProgress.fail("Benchmark failed");
     renderError($("#arena-error"), failure);
     stream.close();
   });
@@ -195,6 +208,7 @@ function listen(runId) {
     });
     setStatus($("#arena-status"), "DISCONNECTED", "bad");
     setStatus($("#arena-feed-status"), "DISCONNECTED", "bad");
+    arenaProgress.fail("Stream disconnected");
     feed("stream_disconnected", `run ${runId} ended before a terminal event`, "bad");
   };
 }
@@ -209,6 +223,7 @@ async function start() {
   $("#arena-usage").textContent = "Measuring token and cost totals; unavailable provider telemetry will stay unknown.";
   $("#arena-row-reasons").innerHTML = '<p class="empty-state">Reasons for ungraded or partial rows will appear here as trials complete.</p>';
   $("#arena-rows").innerHTML = '<tr><td colspan="7" class="empty">Run accepted. Waiting for the first streamed trial…</td></tr>';
+  arenaProgress.start("Waiting for the first server event");
   setStatus($("#arena-status"), "RUNNING", "warn");
   setStatus($("#arena-feed-status"), "LIVE", "warn");
   $("#bench-button").disabled = true;
@@ -230,6 +245,7 @@ async function start() {
     listen(currentRun);
   } catch (failure) {
     $("#bench-button").disabled = false;
+    arenaProgress.fail("Benchmark did not start");
     setStatus($("#arena-status"), "ERROR", "bad");
     setStatus($("#arena-feed-status"), "ERROR", "bad");
     feed("start_failed", JSON.stringify(failure), "bad");

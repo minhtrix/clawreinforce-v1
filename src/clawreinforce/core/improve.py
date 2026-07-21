@@ -5,6 +5,7 @@ import re
 from dataclasses import asdict, dataclass
 from dataclasses import replace
 from collections.abc import Callable
+from typing import Any
 
 from clawreinforce.core.checks import run_check
 from clawreinforce.core.models import GoldenCase, ProviderResult, Skill
@@ -15,6 +16,7 @@ VERIFIED_HEADING = "## Examples (verified)"
 INSTRUCT_MARKER = "CLAWREINFORCE_IMPROVE_INSTRUCT"
 FEWSHOT_MARKER = "CLAWREINFORCE_IMPROVE_FEWSHOT"
 Executor = Callable[[str, str, str], ProviderResult]
+EventSink = Callable[[dict[str, Any]], None]
 
 
 def improve_status() -> dict[str, object]:
@@ -207,8 +209,15 @@ def _validate_run(skill: Skill, tier: str, strategy: str, max_rewrites: int) -> 
         raise ClawError("improve.max_rewrites", "validation", "max rewrites must be at least 1", max_rewrites=max_rewrites)
 
 
-def _grade(skill: Skill, tier: str, executor: Executor) -> dict[str, bool]:
+def _grade(
+    skill: Skill,
+    tier: str,
+    executor: Executor,
+    *,
+    emit: EventSink | None = None,
+) -> dict[str, bool]:
     outcomes: dict[str, bool] = {}
+    emit = emit or (lambda event: None)
     system = (
         "Follow the supplied agent skill. Return only the task artifact; do not explain your reasoning."
         f"\n\n<skill>\n{skill.body}\n</skill>"
@@ -216,6 +225,7 @@ def _grade(skill: Skill, tier: str, executor: Executor) -> dict[str, bool]:
     for case in skill.cases:
         output = _completed(executor(tier, system, case.input))
         outcomes[case.id] = run_check(case.check, output).passed
+        emit({"type": "measurement", "tier": tier, "case_id": case.id, "passed": outcomes[case.id]})
     return outcomes
 
 

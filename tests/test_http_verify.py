@@ -179,6 +179,37 @@ def test_improve_http_accepts_author_and_multiple_gate_models(tmp_path: Path) ->
     ]
 
 
+def test_improve_http_streams_measure_propose_remeasure_gate(tmp_path: Path) -> None:
+    with api_server(tmp_path) as base:
+        started = request(
+            base,
+            "/api/improve/runs",
+            {
+                "source": "examples/improvable-uppercase-skill",
+                "author_tier": "fixture:upper-if-skilled",
+                "gate_tiers": ["fixture:upper-if-skilled"],
+                "strategy": "instruct",
+                "max_rewrites": 1,
+                "apply": False,
+            },
+        )
+        with urllib.request.urlopen(base + f"/api/runs/{started['run_id']}/events", timeout=5) as response:
+            events = response.read().decode()
+
+    for event_type in (
+        "run_started",
+        "phase_started",
+        "measurement",
+        "proposal_received",
+        "phase_completed",
+        "gate_decision",
+        "run_completed",
+    ):
+        assert f"event: {event_type}" in events
+    assert events.index("event: measurement") < events.index("event: proposal_received")
+    assert events.index("event: gate_decision") < events.index("event: run_completed")
+
+
 def test_traps_http_measures_then_freezes_only_reviewed_selection(tmp_path: Path) -> None:
     with api_server(tmp_path) as base:
         report = request(
