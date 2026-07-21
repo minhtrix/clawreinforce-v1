@@ -70,6 +70,20 @@ browser. The product server and web client require no Node runtime. Executable c
 in temporary subprocesses; use an isolated machine for untrusted code until a stronger
 sandbox backend is available.
 
+## MCP for agent-driven evaluation
+
+Install the optional official MCP SDK and start the stdio adapter:
+
+```console
+python -m pip install -e ".[mcp]"
+python -m clawreinforce mcp --project .
+```
+
+The adapter exposes catalog, scan, certify, guard, dry-run Improve, asynchronous Arena,
+and signature verification without adding a second scoring implementation or an
+unreviewed mutation path. [docs/AGENT_QUICKSTART.md](docs/AGENT_QUICKSTART.md) contains
+Codex configuration and a five-minute zero-key judge prompt.
+
 ## How Codex was used
 
 This repository was built in milestone-focused Codex sessions from the recovered master specification in [docs/SPEC.md](docs/SPEC.md). Codex translated that spec into the core/adapter/web architecture, implemented the CLI and HTTP surfaces, wrote the deterministic fixtures and regression tests, integrated remote skill and task sources, and kept each behavior change behind a green test increment and an evidence-bearing Git commit. The code-verified failure memory lives in [docs/POSTMORTEMS.md](docs/POSTMORTEMS.md); its guardrails are carried into ten small, sequential [Buildweek V2 prompts](docs/BUILDWEEKV2_PROMPTS.md).

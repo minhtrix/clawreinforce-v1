@@ -52,6 +52,8 @@ coverage, fingerprints, signatures, diffs, trials, and exports.
 4. Improve shows measure → propose → re-measure → gate; rejected rewrites never mutate.
 5. Models distinguishes real LLM catalogs, deterministic fixtures, key sources, and
    structured provider errors without displaying secrets.
+6. A thin stdio MCP adapter lets Codex run the same evidence flows without GUI-specific
+   instructions or a second scoring implementation.
 
 ## How Codex was used
 
@@ -99,6 +101,8 @@ Expected signals: certification `coverage: 10/10`, `pass_rate: 1.0`; Arena `with
 
 For the scripted path and narration, use `docs/DEMO.md`. Only optional real-provider
 calls require a provider key.
+
+Agent-driven testing instructions are in `docs/AGENT_QUICKSTART.md`.
 
 ## Honest current boundaries
 

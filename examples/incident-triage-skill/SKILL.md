@@ -20,7 +20,7 @@ Severity rules, evaluated in order:
 
 Route active exploits, credentials, or malware to `security`; authentication, login, or
 identity issues to `identity`; payments, billing, or checkout issues to `payments`; and
-everything else to `platform`. Set `duplicate` to true when `repeated_count` is at least
+unmatched services to `platform`. Set `duplicate` to true when `repeated_count` is at least
 2. For security incidents, isolate and page security. For a recent deployment, roll it
 back and page the service owner. For other P1 incidents, page the owner and start an
 incident bridge. Otherwise investigate with the owner. Never invent missing evidence.

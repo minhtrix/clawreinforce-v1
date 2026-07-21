@@ -192,6 +192,13 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_mcp(args: argparse.Namespace) -> int:
+    from clawreinforce.adapters.mcp_server import run_mcp
+
+    run_mcp(Path(args.project))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="clawreinforce",
@@ -258,6 +265,9 @@ def build_parser() -> argparse.ArgumentParser:
     server.add_argument("--host", default="127.0.0.1")
     server.add_argument("--port", type=int, default=8788)
     server.set_defaults(func=_cmd_serve)
+    mcp = commands.add_parser("mcp", help="serve judge-safe clawreinforce tools over MCP stdio")
+    mcp.add_argument("--project", default=".")
+    mcp.set_defaults(func=_cmd_mcp)
     return parser
 
 
